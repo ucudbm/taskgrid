@@ -30,7 +30,7 @@ def main():
     cfg_path = Path(args.config)
     if not cfg_path.exists():
         print(f"Config not found: {cfg_path}", file=sys.stderr)
-        print(f"Hint: use -c <path> to specify config file (e.g. -c config/config.yaml)", file=sys.stderr)
+        print(f"Hint: use -c <path> to specify config file (e.g. -c config.yaml.example)", file=sys.stderr)
         sys.exit(1)
 
     cfg = GEConfig(cfg_path)

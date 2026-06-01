@@ -11,11 +11,15 @@ TaskGrid is a distributed task execution system with three components:
 ### Prerequisites
 
 - Python 3.10+
-- Redis 6.x (required by GS)
+- Redis 6.x (required by GS) — e.g. `sudo apt install redis` (Ubuntu) or `brew install redis` (Mac)
 
 ### Installation
 
 ```bash
+# Recommended: create a virtual environment (Ubuntu 24+ requires it)
+python3 -m venv .venv
+source .venv/bin/activate
+
 pip install -e .
 ```
 
@@ -26,7 +30,7 @@ Open three terminals.
 Terminal 1 — GP (Package Server):
 
 ```bash
-taskgrid-gp
+taskgrid-gp -c config.yaml.example
 ```
 
 Terminal 2 — GS (Scheduler + Web UI):

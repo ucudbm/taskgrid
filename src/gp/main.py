@@ -201,7 +201,7 @@ def main():
     parser.add_argument("-c", "--config", default="/etc/taskgrid/config.yaml", help="Path to config file")
     parser.add_argument("--host", default="0.0.0.0", help="Bind address")
     parser.add_argument("--port", type=int, default=8001, help="Bind port")
-    parser.add_argument("--store-dir", default="/var/lib/taskgrid/packages", help="Package storage directory")
+    parser.add_argument("--store-dir", default="./.taskgrid/packages", help="Package storage directory")
     args = parser.parse_args()
 
     store_dir = args.store_dir
@@ -218,7 +218,7 @@ def main():
             _TOKEN = _TOKEN or gp_cfg.get("auth_token", "")
         else:
             print(f"Warning: config not found: {cfg_path}, using defaults", file=sys.stderr)
-            print(f"Hint: use -c <path> to specify config file (e.g. -c config/config.yaml)", file=sys.stderr)
+            print(f"Hint: use -c <path> to specify config file (e.g. -c config.yaml.example)", file=sys.stderr)
 
     Path(store_dir).mkdir(parents=True, exist_ok=True)
     _setup_gp_logging()
