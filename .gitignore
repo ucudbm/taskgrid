@@ -25,5 +25,13 @@ venv/
 Thumbs.db
 
 # Project
+artifacts/
+cache/
+gs.db
+gs.db-shm
+gs.db-wal
+logs/
+packages/
+workspace/
 *.db
 /tmp/
