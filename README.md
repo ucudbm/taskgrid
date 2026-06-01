@@ -21,6 +21,8 @@ pip install -e .
 
 ### Start Services
 
+Open three terminals.
+
 Terminal 1 — GP (Package Server):
 
 ```bash
@@ -33,7 +35,13 @@ Terminal 2 — GS (Scheduler + Web UI):
 taskgrid-gs -c config.yaml.example
 ```
 
-Open [http://localhost:8000](http://localhost:8000) to see the dashboard.
+Terminal 3 — GE (Executor Worker):
+
+```bash
+taskgrid-ge -c config.yaml.example
+```
+
+The GE will register with GS and start polling for tasks. Open [http://localhost:8000](http://localhost:8000) to see the dashboard.
 
 ### Load Demo Packages
 
@@ -61,7 +69,9 @@ done
 3. Select the **Hello World** task template
 4. Set **Target GE** to `ge-node-01`
 5. Click **Create Task**
-6. Watch the task run and check the result
+6. The task enters the queue. The GE polls and picks it up automatically.
+7. Go to the [Tasks page](http://localhost:8000/tasks) — the task transitions from `pending` → `running` → `success`.
+8. Click the task to see the detail page with timing, exit code, and download link for output logs.
 
 ### Demo Package Reference
 
