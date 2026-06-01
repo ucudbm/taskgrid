@@ -1,0 +1,4 @@
+2026-06-01 18:30:32,969 [INFO] Task 1 started
+2026-06-01 18:30:33,335 [INFO] Docker daemon: available
+2026-06-01 18:30:36,500 [INFO] Hello, World!
+2026-06-01 18:30:36,501 [INFO] Task 1 finished: success

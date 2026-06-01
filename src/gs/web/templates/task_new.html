@@ -14,6 +14,7 @@
     <label>Package Name *</label>
     <input name="package_name" id="pkgNameInput" required placeholder="e.g. web_autotest" autocomplete="off">
     <div id="pkgDropdown" class="autocomplete-dropdown"></div>
+    <div id="pkgEmptyHint" style="display:none;margin-top:4px;color:#8899a6;font-size:12px;">No packages found — load demo packages first.</div>
   </div>
 
   <div id="taskTemplatesSection" style="display:none;margin-bottom:16px;">
@@ -239,6 +240,10 @@ PackageTrie.prototype.search = function(prefix) {
   }).then(function(pkgs) {
     if (!Array.isArray(pkgs)) return;
     allPackages = pkgs;
+    if (pkgs.length === 0) {
+      document.getElementById('pkgEmptyHint').style.display = 'block';
+      return;
+    }
     pkgs.forEach(function(p) { trie.insert(p.name, p); });
   }).catch(function() {});
 

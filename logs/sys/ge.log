@@ -1,0 +1,27 @@
+2026-06-01T18:28:42.520 [GE] [INFO] System logging initialized (log_dir=/tmp/taskgrid/logs)
+2026-06-01T18:28:42.639 [GE] [INFO] Registered with GS as ge-node-01
+2026-06-01T18:28:42.639 [GE] [INFO] GE ge-node-01 started (poll=10s, heartbeat=10s)
+2026-06-01T18:28:42.639 [GE] [INFO] Retention cleanup started (interval=24h)
+2026-06-01T18:30:32.967 [GE] [INFO] Polled 1 new task(s)
+2026-06-01T18:30:32.968 [GE] [INFO] Dispatching task 1
+2026-06-01T18:30:33.336 [GE] [INFO] Creating venv at /tmp/taskgrid/workspace/1/.venv
+2026-06-01T18:30:36.532 [GE] [INFO] Destroyed venv at /tmp/taskgrid/workspace/1/.venv
+2026-06-01T18:30:36.547 [GE] [INFO] Result for task 1 submitted
+2026-06-01T18:31:33.105 [GE] [INFO] Polled 1 new task(s)
+2026-06-01T18:31:33.105 [GE] [INFO] Dispatching task 2
+2026-06-01T18:31:33.139 [GE] [INFO] Creating venv at /tmp/taskgrid/workspace/2/.venv
+2026-06-01T18:31:36.300 [GE] [INFO] Destroyed venv at /tmp/taskgrid/workspace/2/.venv
+2026-06-01T18:31:36.315 [GE] [INFO] Result for task 2 submitted
+2026-06-01T18:32:03.176 [GE] [INFO] Polled 1 new task(s)
+2026-06-01T18:32:03.176 [GE] [INFO] Dispatching task 3
+2026-06-01T18:32:03.217 [GE] [INFO] Creating venv at /tmp/taskgrid/workspace/3/.venv
+2026-06-01T18:32:06.710 [GE] [INFO] Destroyed venv at /tmp/taskgrid/workspace/3/.venv
+2026-06-01T18:32:06.725 [GE] [INFO] Result for task 3 submitted
+2026-06-01T18:55:14.577 [GE] [INFO] GE ge-node-01 shutting down
+2026-06-01T18:58:40.559 [GE] [INFO] System logging initialized (log_dir=/tmp/taskgrid/logs)
+2026-06-01T18:58:40.675 [GE] [WARNING] GE ID conflict, re-registering...
+2026-06-01T18:58:40.679 [GE] [INFO] Registered with GS as ge-node-01
+2026-06-01T18:58:40.680 [GE] [INFO] GE ge-node-01 started (poll=10s, heartbeat=10s)
+2026-06-01T18:58:40.680 [GE] [INFO] Retention cleanup started (interval=24h)
+2026-06-01T19:02:41.196 [GE] [WARNING] Task poll failed: [Errno 111] Connection refused
+2026-06-01T19:02:42.857 [GE] [INFO] GE ge-node-01 shutting down

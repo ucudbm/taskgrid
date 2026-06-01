@@ -1,0 +1,5 @@
+2026-06-01T18:30:36.493 [PKG] [INFO] Downloading package hello_world_single v1 from GP
+2026-06-01T18:30:36.497 [PKG] [INFO] Cached package hello_world_single v1 at /tmp/taskgrid/cache/packages/hello_world_single/1/package.tar
+2026-06-01T18:31:36.258 [PKG] [INFO] Downloading package hello_world_advanced v1 from GP
+2026-06-01T18:31:36.262 [PKG] [INFO] Cached package hello_world_advanced v1 at /tmp/taskgrid/cache/packages/hello_world_advanced/1/package.tar
+2026-06-01T18:32:06.675 [PKG] [INFO] Package cache hit: hello_world_advanced v1
