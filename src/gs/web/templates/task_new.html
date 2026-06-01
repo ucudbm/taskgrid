@@ -233,10 +233,14 @@ PackageTrie.prototype.search = function(prefix) {
 
   function s4e(v) { return v.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-  fetch('/api/packages').then(function(r) { return r.json(); }).then(function(pkgs) {
+  fetch('/api/packages').then(function(r) {
+    if (!r.ok) return [];
+    return r.json();
+  }).then(function(pkgs) {
+    if (!Array.isArray(pkgs)) return;
     allPackages = pkgs;
     pkgs.forEach(function(p) { trie.insert(p.name, p); });
-  });
+  }).catch(function() {});
 
   function loadPackageTasks(pkgName) {
     if (!pkgName || pkgName === currentPkgName) return;

@@ -56,7 +56,10 @@ def search_packages(
 
 @router.get("")
 def list_packages(_=Depends(verify_token)):
-    packages = _proxy("GET", "/api/packages")
+    try:
+        packages = _proxy("GET", "/api/packages")
+    except HTTPException:
+        return []
     gp_url = _get_gp_url()
     headers = _get_gp_headers()
     with httpx.Client(timeout=30) as client:
