@@ -1,0 +1,41 @@
+gs:
+  host: "0.0.0.0"
+  port: 8000
+  db_path: "/tmp/taskgrid/gs.db"
+  redis_url: "redis://localhost:6379/0"
+  store_dir: "/tmp/taskgrid/artifacts"
+  gp_url: "http://localhost:8001"
+  auth_token: ""
+  log_level: "INFO"
+  offline_timeout: 30
+  retention_days: 30
+
+ge:
+  id: "ge-node-01"
+  server_url: "http://localhost:8000"
+  gp_url: "http://localhost:8001"
+  pool: ""
+  os_tag: ""
+  auth_token: ""
+  total_slots: 3
+  polling_interval: 10
+  heartbeat_interval: 10
+  offline_timeout: 30
+  task_timeout: 3600
+  retry_enabled: false
+  retry_count: 0
+  workdir_base: "/tmp/taskgrid/workspace"
+  log_dir: "/tmp/taskgrid/logs"
+  log_level: "INFO"
+  package_cache_dir: "/tmp/taskgrid/cache/packages"
+  task_log_retention_days: 30
+  temp_data_retention_days: 3
+  ota:
+    enabled: false
+    update_url: ""
+
+gp:
+  host: "0.0.0.0"
+  port: 8001
+  store_dir: "/tmp/taskgrid/packages"
+  auth_token: ""

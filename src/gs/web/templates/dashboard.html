@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<h1>Dashboard</h1>
+
+<div class="stats-grid">
+  <div class="card">
+    <div class="card-title">Total Tasks</div>
+    <div class="card-value">{{ total_tasks }}</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Pending</div>
+    <div class="card-value">{{ counts.get('pending', 0) }}</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Running</div>
+    <div class="card-value">{{ counts.get('running', 0) }}</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Success</div>
+    <div class="card-value">{{ counts.get('success', 0) }}</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Failed</div>
+    <div class="card-value">{{ counts.get('failed', 0) }}</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Cancelled</div>
+    <div class="card-value">{{ counts.get('cancelled', 0) }}</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Timeout</div>
+    <div class="card-value">{{ counts.get('timeout', 0) }}</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Executors Online</div>
+    <div class="card-value">{{ online_ges }} / {{ total_ges }}</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Slots (idle/total)</div>
+    <div class="card-value">{{ idle_slots }} / {{ total_slots }}</div>
+  </div>
+</div>
+
+<h2>Recent Tasks</h2>
+<div class="card">
+{% if recent_tasks %}
+<table>
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Name</th>
+      <th>Priority</th>
+      <th>Status</th>
+      <th>Target GE</th>
+      <th>Created</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for t in recent_tasks %}
+    <tr class="clickable" onclick="location.href='/tasks/{{ t.id }}'">
+      <td>{{ t.id }}</td>
+      <td>{{ t.name }}</td>
+      <td><span class="badge badge-{{ t.priority }}">{{ t.priority }}</span></td>
+      <td><span class="badge badge-{{ t.status }}">{{ t.status }}</span></td>
+      <td>{{ t.target_ge or '-' }}</td>
+      <td>{{ t.created_at[:19] }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty">No tasks yet. <a href="/tasks/new">Create one</a></div>
+{% endif %}
+</div>
+{% endblock %}

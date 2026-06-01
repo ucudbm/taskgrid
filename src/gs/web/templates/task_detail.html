@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block title %}Task {{ task.id }}{% endblock %}
+{% block content %}
+<h1 style="display:flex;align-items:center;gap:8px;">
+  <span>{{ task.name }}</span>
+  <span class="badge badge-{{ task.status }}" style="font-size:13px;">{{ task.status }}</span>
+  <span class="badge badge-{{ task.priority }}" style="font-size:13px;">{{ task.priority }}</span>
+  <span style="flex:1"></span>
+  {% if task.status == 'pending' or task.status == 'running' %}
+  <button class="btn btn-danger btn-sm" onclick="cancelTask({{ task.id }})">Cancel</button>
+  {% endif %}
+</h1>
+
+<div class="stats-grid" style="margin-bottom:20px;">
+  <div class="card">
+    <div class="card-title">Status</div>
+    <div class="card-value" style="font-size:22px;">
+      <span class="badge badge-{{ task.status }}" style="font-size:16px;padding:4px 14px;">{{ task.status }}</span>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Priority</div>
+    <div class="card-value" style="font-size:22px;">
+      <span class="badge badge-{{ task.priority }}" style="font-size:16px;padding:4px 14px;">{{ task.priority }}</span>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Executor</div>
+    <div class="card-value" style="font-size:18px;">{{ task.target_ge or '-' }}</div>
+    {% if task.pool or task.os_tag %}
+    <div style="font-size:12px;color:#8899a6;margin-top:4px;">
+      {{ task.pool or '' }}{{ (' / ' + task.os_tag) if task.os_tag else '' }}
+    </div>
+    {% endif %}
+  </div>
+  <div class="card">
+    <div class="card-title">Package</div>
+    <div class="card-value" style="font-size:18px;">{{ task.package_name }}</div>
+    <div style="font-size:12px;color:#8899a6;margin-top:4px;">v{{ task.package_version }}</div>
+  </div>
+</div>
+
+{% set has_timing = task.start_time or task.end_time or task.duration %}
+{% set has_result = task.exit_code is not none or task.error_msg %}
+{% set output_files = result.result_section.output_files if result and result.result_section.output_files else [] %}
+{% set has_output = output_files|length > 0 %}
+
+{% if has_timing %}
+<div class="stats-grid" style="margin-bottom:20px;grid-template-columns:repeat(3,1fr);">
+  <div class="card">
+    <div class="card-title">Start Time</div>
+    <div class="card-value" style="font-size:16px;">{{ task.start_time[:19] if task.start_time else '-' }}</div>
+  </div>
+  <div class="card">
+    <div class="card-title">End Time</div>
+    <div class="card-value" style="font-size:16px;">{{ task.end_time[:19] if task.end_time else '-' }}</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Duration</div>
+    <div class="card-value" style="font-size:16px;">
+      {% if task.duration %}{{ task.duration }}s
+      {% elif task.status == 'running' and task.start_time %}<span style="color:#7bc9ff;">running...</span>
+      {% else %}-{% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if has_result or has_output %}
+<div class="detail-section">
+  <h3>Result</h3>
+  <div class="card">
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:8px 16px;">
+      {% if task.exit_code is not none %}
+      <span style="color:#8899a6;">Exit Code</span>
+      <span>
+        {% if task.exit_code == 0 %}
+        <span style="color:#7ae9a0;font-weight:700;">0 (success)</span>
+        {% else %}
+        <span style="color:#ff7b7b;font-weight:700;">{{ task.exit_code }}</span>
+        {% endif %}
+      </span>
+      {% endif %}
+
+      {% if task.error_msg %}
+      <span style="color:#8899a6;">Error</span>
+      <span style="color:#ff7b7b;background:#3a1a1a;padding:6px 10px;border-radius:4px;font-family:monospace;font-size:13px;word-break:break-all;">{{ task.error_msg }}</span>
+      {% endif %}
+
+      {% for f in output_files %}
+      <span style="color:#8899a6;">{{ 'Output File' if loop.first else '' }}</span>
+      <span>
+        <a href="/api/tasks/results/{{ task.id }}/files/{{ f.split('/')[-1] }}" target="_blank" style="display:inline-flex;align-items:center;gap:4px;">
+          &#11015; {{ f.split('/')[-1] }}
+        </a>
+      </span>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div style="margin-top:8px;">
+  <button class="btn btn-sm" style="background:#2a3040;color:#e1e8ed;" onclick="toggleDetails()">&#9654; Details</button>
+</div>
+
+<div id="task-details" style="display:none;margin-top:16px;">
+  <div class="detail-section">
+    <h3>Scheduler</h3>
+    <div class="detail-grid">
+      <span class="label">Target GE</span><span class="value">{{ task.target_ge or '-' }}</span>
+      <span class="label">Pool</span><span class="value">{{ task.pool or '-' }}</span>
+      <span class="label">OS Tag</span><span class="value">{{ task.os_tag or '-' }}</span>
+      <span class="label">Device ID</span><span class="value">{{ task.device_id or '-' }}</span>
+      <span class="label">Timeout</span><span class="value">{{ task.timeout }}s</span>
+      <span class="label">Retry</span><span class="value">{{ task.retry }}</span>
+    </div>
+  </div>
+
+  <div class="detail-section">
+    <h3>Package</h3>
+    <div class="detail-grid">
+      <span class="label">Name</span><span class="value">{{ task.package_name }} v{{ task.package_version }}</span>
+      <span class="label">Type</span><span class="value">{{ task.package_type }}</span>
+      <span class="label">Entrypoint</span><span class="value"><code>{{ task.entrypoint }}</code></span>
+      <span class="label">Args</span><span class="value"><code>{{ task.args }}</code></span>
+      <span class="label">Workdir</span><span class="value">{{ task.workdir or '-' }}</span>
+      <span class="label">User</span><span class="value">{{ task.user or '-' }}</span>
+      <span class="label">Env</span><span class="value"><code>{{ task.env }}</code></span>
+    </div>
+  </div>
+
+  <div class="detail-section">
+    <h3>Metadata</h3>
+    <div class="detail-grid">
+      <span class="label">Task ID</span><span class="value">#{{ task.id }}</span>
+      <span class="label">Created</span><span class="value">{{ task.created_at[:19] }}</span>
+      <span class="label">Updated</span><span class="value">{{ task.updated_at[:19] }}</span>
+      <span class="label">Description</span><span class="value">{{ task.description or '' }}</span>
+    </div>
+  </div>
+</div>
+
+<script>
+function cancelTask(taskId) {
+  if (!confirm('Cancel task #' + taskId + '?')) return;
+  fetch('/api/tasks/' + taskId + '/cancel', { method: 'POST', headers: {'Content-Type':'application/json'} })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.status === 'cancelled') { location.reload(); }
+      else { showToast('Cancel failed: ' + (d.detail || JSON.stringify(d)), 'error'); }
+    })
+    .catch(function(e) { showToast('Request failed: ' + e, 'error'); });
+}
+function toggleDetails() {
+  var el = document.getElementById('task-details');
+  var btn = el.previousElementSibling;
+  if (el.style.display === 'none') {
+    el.style.display = 'block';
+    btn.innerHTML = '&#9660; Details';
+  } else {
+    el.style.display = 'none';
+    btn.innerHTML = '&#9654; Details';
+  }
+}
+</script>
+{% endblock %}

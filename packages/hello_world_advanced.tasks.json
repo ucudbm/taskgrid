@@ -1,0 +1,1 @@
+[{"name":"Say Hello","entrypoint":"hello.sh","args":[]},{"name":"Ping Local","entrypoint":"ping.sh","args":[]}]

@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Executors{% endblock %}
+{% block content %}
+<h1>Executors</h1>
+
+<div class="stats-grid">
+  <div class="card">
+    <div class="card-title">Total</div>
+    <div class="card-value">{{ ges|length }}</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Online</div>
+    <div class="card-value">{{ ges | selectattr('state', 'in', ['online', 'running']) | list | length }}</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Offline</div>
+    <div class="card-value">{{ ges | selectattr('state', 'equalto', 'offline') | list | length }}</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Total Slots</div>
+    <div class="card-value">{{ ges | sum(attribute='total_slots') }}</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Idle Slots</div>
+    <div class="card-value">{{ ges | sum(attribute='idle_slots') }}</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Busy Slots</div>
+    <div class="card-value">{{ ges | sum(attribute='total_slots') - ges | sum(attribute='idle_slots') }}</div>
+  </div>
+</div>
+
+<div class="card">
+{% if ges %}
+<table>
+  <thead>
+    <tr>
+      <th>GE ID</th>
+      <th>State</th>
+      <th>Pool</th>
+      <th>OS</th>
+      <th>Device</th>
+      <th>Slots</th>
+      <th>Current Task</th>
+      <th>Last Heartbeat</th>
+      <th>Registered</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for g in ges %}
+    <tr class="clickable" onclick="location.href='/ges/{{ g.ge_id }}'">
+      <td><strong>{{ g.ge_id }}</strong></td>
+      <td><span class="badge badge-{{ g.state if g.state in ['online', 'running'] else 'offline' }}">{{ g.state }}</span></td>
+      <td>{{ g.pool or '-' }}</td>
+      <td>{{ g.os_tag or '-' }}</td>
+      <td>{{ g.device_id or '-' }}</td>
+      <td>{{ g.idle_slots }}/{{ g.total_slots }}</td>
+      <td>{{ g.current_task_id if g.current_task_id else '-' }}</td>
+      <td>{{ (g.last_heartbeat or '')[:19] }}</td>
+      <td>{{ (g.registered_at or '')[:19] }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty">No executors registered.</div>
+{% endif %}
+</div>
+{% endblock %}

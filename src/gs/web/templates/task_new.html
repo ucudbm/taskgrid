@@ -1,0 +1,428 @@
+{% extends "base.html" %}
+{% block title %}New Task{% endblock %}
+{% block content %}
+<h1>Create Task</h1>
+
+<div class="card">
+<form id="taskForm" onsubmit="return submitTask()">
+  <div class="form-group">
+    <label>Task Name *</label>
+    <input name="name" id="taskNameInput" required placeholder="e.g. Regression_Suite_v1">
+  </div>
+
+  <div class="form-group" style="position:relative;">
+    <label>Package Name *</label>
+    <input name="package_name" id="pkgNameInput" required placeholder="e.g. web_autotest" autocomplete="off">
+    <div id="pkgDropdown" class="autocomplete-dropdown"></div>
+  </div>
+
+  <div id="taskTemplatesSection" style="display:none;margin-bottom:16px;">
+    <label style="display:block;margin-bottom:8px;color:#8899a6;font-size:13px;">Task Template</label>
+    <div id="taskTemplatesList"></div>
+  </div>
+
+  <div class="form-group">
+    <label>Entrypoint *</label>
+    <div style="position:relative;">
+      <input name="entrypoint" id="entrypointInput" required placeholder="e.g. tests/host-runsuite">
+      <span id="entrypointHint" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);color:#8899a6;font-size:11px;">from package</span>
+    </div>
+  </div>
+
+  <div class="section-toggle" onclick="toggleSection('pkgExtra')">
+    <span class="section-toggle-icon">+</span> Package Options
+  </div>
+  <div class="section-body" id="pkgExtra">
+    <div class="form-group">
+      <label>Description</label>
+      <textarea name="description" rows="2" placeholder="Optional description"></textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Package Version</label>
+        <input name="package_version" id="pkgVersionInput" type="number" min="0" placeholder="Auto (latest)">
+      </div>
+      <div class="form-group">
+        <label>Package Type</label>
+        <select name="package_type">
+          <option value="shell">Shell</option>
+          <option value="python">Python</option>
+          <option value="docker">Docker</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Args (JSON array)</label>
+      <input name="args" id="argsInput" placeholder='["-p", "tp_example.xml"]'>
+    </div>
+  </div>
+
+  <div class="section-toggle" onclick="toggleSection('schedExtra')">
+    <span class="section-toggle-icon">+</span> Scheduler
+  </div>
+  <div class="section-body" id="schedExtra">
+    <div class="form-row">
+      <div class="form-group">
+        <label>Priority</label>
+        <select name="priority">
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+          <option value="low">Low</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Target GE</label>
+        <select name="target_ge">
+          <option value="">Any (auto-route)</option>
+          {% for g in ges %}
+          <option value="{{ g.ge_id }}">{{ g.ge_id }} ({{ g.state }}, {{ g.idle_slots }}/{{ g.total_slots }} slots)</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Pool</label>
+        <input name="pool" placeholder="e.g. qa_cluster">
+      </div>
+      <div class="form-group">
+        <label>OS Tag</label>
+        <select name="os_tag">
+          <option value="">Any</option>
+          <option value="linux">Linux</option>
+          <option value="windows">Windows</option>
+          <option value="mac">Mac</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Device ID</label>
+        <input name="device_id" placeholder="e.g. DEVICENO_01">
+      </div>
+      <div class="form-group">
+        <label>Timeout (seconds)</label>
+        <input name="timeout" type="number" value="3600" min="1">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Retry (0 = no retry)</label>
+      <input name="retry" type="number" value="0" min="0">
+    </div>
+  </div>
+
+  <div class="section-toggle" onclick="toggleSection('execExtra')">
+    <span class="section-toggle-icon">+</span> Executor
+  </div>
+  <div class="section-body" id="execExtra">
+    <div class="form-row">
+      <div class="form-group">
+        <label>Workdir</label>
+        <input name="workdir" placeholder="Auto (default)">
+      </div>
+      <div class="form-group">
+        <label>User</label>
+        <input name="user" placeholder="Run as user (Linux/Mac)">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Env (JSON object)</label>
+      <textarea name="env" rows="3" placeholder='{"KEY": "value"}'></textarea>
+    </div>
+  </div>
+
+  <button type="submit" class="btn btn-primary">Create Task</button>
+  <a href="/tasks" class="btn" style="margin-left:8px; background:#2a3040; color:#e1e8ed;">Cancel</a>
+</form>
+</div>
+
+<style>
+.autocomplete-dropdown {
+  position:absolute; top:100%; left:0; right:0; z-index:1000;
+  background:#1a1f2e; border:1px solid #2a3040; border-radius:6px;
+  max-height:200px; overflow-y:auto; display:none;
+}
+.autocomplete-item {
+  padding:8px 12px; cursor:pointer; color:#e1e8ed; font-size:14px;
+  display:flex; justify-content:space-between; align-items:center;
+}
+.autocomplete-item:hover, .autocomplete-item.selected { background:#252b3d; color:#fff; }
+.autocomplete-item .hint { color:#8899a6; font-size:12px; }
+.section-toggle {
+  display:flex; align-items:center; gap:8px; cursor:pointer;
+  color:#8899a6; font-size:13px; text-transform:uppercase; letter-spacing:0.5px;
+  margin:16px 0 0; padding:10px 0; border-top:1px solid #2a3040;
+  user-select:none;
+}
+.section-toggle:hover { color:#1d9bf0; }
+.section-toggle-icon {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:18px; height:18px; border:1px solid #2a3040; border-radius:4px;
+  font-size:14px; font-weight:700; color:#8899a6; line-height:1;
+}
+.section-toggle:hover .section-toggle-icon { border-color:#1d9bf0; color:#1d9bf0; }
+.section-body { display:none; margin-top:12px; }
+.section-body.open { display:block; }
+.template-card {
+  display:flex; align-items:flex-start; gap:10px;
+  padding:10px 12px; border:1px solid #2a3040; border-radius:6px;
+  cursor:pointer; margin-bottom:6px; transition:all 0.15s;
+}
+.template-card:hover { border-color:#1d9bf0; background:#252b3d; }
+.template-card.selected { border-color:#1d9bf0; background:#1a2a3a; }
+.template-card input[type="radio"] { margin-top:3px; accent-color:#1d9bf0; }
+.template-card .template-info { flex:1; }
+.template-card .template-name { color:#fff; font-size:14px; font-weight:600; }
+.template-card .template-desc { color:#8899a6; font-size:12px; margin-top:2px; }
+.template-card .template-entry { color:#1d9bf0; font-size:11px; margin-top:2px; }
+</style>
+
+<script>
+var TrieNode = function() {
+  this.children = {};
+  this.packages = [];
+};
+
+var PackageTrie = function() {
+  this.root = new TrieNode();
+};
+
+PackageTrie.prototype.insert = function(name, pkg) {
+  var node = this.root;
+  var key = name.toLowerCase();
+  for (var i = 0; i < key.length; i++) {
+    var ch = key[i];
+    if (!node.children[ch]) node.children[ch] = new TrieNode();
+    node = node.children[ch];
+    node.packages.push(pkg);
+  }
+};
+
+PackageTrie.prototype.search = function(prefix) {
+  var node = this.root;
+  prefix = prefix.toLowerCase();
+  for (var i = 0; i < prefix.length; i++) {
+    var ch = prefix[i];
+    if (!node.children[ch]) return [];
+    node = node.children[ch];
+  }
+  var seen = {};
+  return node.packages.filter(function(p) {
+    if (seen[p.name]) return false;
+    seen[p.name] = true;
+    return true;
+  });
+};
+
+(function() {
+  var trie = new PackageTrie();
+  var allPackages = [];
+
+  var pkgInput = document.getElementById('pkgNameInput');
+  var pkgDropdown = document.getElementById('pkgDropdown');
+  var taskNameInput = document.getElementById('taskNameInput');
+  var entrypointInput = document.getElementById('entrypointInput');
+  var entrypointHint = document.getElementById('entrypointHint');
+  var versionInput = document.getElementById('pkgVersionInput');
+  var argsInput = document.getElementById('argsInput');
+  var templatesSection = document.getElementById('taskTemplatesSection');
+  var templatesList = document.getElementById('taskTemplatesList');
+  var selectedIdx = -1;
+  var currentTasks = null;
+  var currentPkgName = '';
+
+  function s4e(v) { return v.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  fetch('/api/packages').then(function(r) { return r.json(); }).then(function(pkgs) {
+    allPackages = pkgs;
+    pkgs.forEach(function(p) { trie.insert(p.name, p); });
+  });
+
+  function loadPackageTasks(pkgName) {
+    if (!pkgName || pkgName === currentPkgName) return;
+    currentPkgName = pkgName;
+    clearTemplateSelection();
+    fetch('/api/packages/' + encodeURIComponent(pkgName) + '/versions')
+      .then(function(r) { return r.json(); })
+      .then(function(versions) {
+        if (!versions || versions.length === 0) return;
+        var latest = versions[versions.length - 1];
+        var tasks = latest.tasks;
+        if (!tasks || tasks.length === 0) return;
+        currentTasks = tasks;
+        renderTemplates(tasks);
+      })
+      .catch(function() {});
+  }
+
+  function renderTemplates(tasks) {
+    templatesList.innerHTML = '';
+    templatesSection.style.display = 'block';
+    tasks.forEach(function(t, i) {
+      var card = document.createElement('div');
+      card.className = 'template-card' + (i === 0 ? ' selected' : '');
+      card.innerHTML =
+        '<input type="radio" name="task_template" value="' + i + '"' + (i === 0 ? ' checked' : '') + '>' +
+        '<div class="template-info">' +
+          '<div class="template-name">' + s4e(t.name) + '</div>' +
+          (t.description ? '<div class="template-desc">' + s4e(t.description) + '</div>' : '') +
+          '<div class="template-entry">entrypoint: ' + s4e(t.entrypoint) + '</div>' +
+        '</div>';
+      card.addEventListener('click', function() { selectTemplate(i); });
+      templatesList.appendChild(card);
+    });
+    if (tasks.length > 0) selectTemplate(0);
+  }
+
+  function selectTemplate(idx) {
+    var cards = templatesList.querySelectorAll('.template-card');
+    cards.forEach(function(c, i) { c.classList.toggle('selected', i === idx); });
+    var radios = templatesList.querySelectorAll('input[type="radio"]');
+    if (radios[idx]) radios[idx].checked = true;
+    var t = currentTasks[idx];
+    if (!t) return;
+    taskNameInput.value = t.name || '';
+    entrypointInput.value = t.entrypoint || '';
+    entrypointInput.setAttribute('readonly', 'readonly');
+    entrypointHint.style.display = 'block';
+    argsInput.value = (t.args && t.args.length > 0) ? JSON.stringify(t.args) : '';
+  }
+
+  function clearTemplateSelection() {
+    templatesSection.style.display = 'none';
+    templatesList.innerHTML = '';
+    currentTasks = null;
+    entrypointInput.removeAttribute('readonly');
+    entrypointHint.style.display = 'none';
+  }
+
+  pkgInput.addEventListener('input', function() {
+    var val = this.value.trim();
+    selectedIdx = -1;
+    if (val.length < 1) { pkgDropdown.style.display = 'none'; clearTemplateSelection(); return; }
+    var results = trie.search(val);
+    if (results.length === 0) { pkgDropdown.style.display = 'none'; return; }
+    pkgDropdown.innerHTML = '';
+    results.forEach(function(p, i) {
+      var item = document.createElement('div');
+      item.className = 'autocomplete-item';
+      var nameSpan = document.createElement('span');
+      nameSpan.textContent = p.name;
+      item.appendChild(nameSpan);
+      if (p.latest_version) {
+        var hint = document.createElement('span');
+        hint.className = 'hint';
+        hint.textContent = 'v' + p.latest_version;
+        item.appendChild(hint);
+      }
+      item.addEventListener('mousedown', function(e) {
+        e.preventDefault();
+        selectPackage(p);
+      });
+      pkgDropdown.appendChild(item);
+    });
+    pkgDropdown.style.display = 'block';
+  });
+
+  pkgInput.addEventListener('keydown', function(e) {
+    var items = pkgDropdown.querySelectorAll('.autocomplete-item');
+    if (items.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      selectedIdx = Math.min(selectedIdx + 1, items.length - 1);
+      updateSelection(items);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      selectedIdx = Math.max(selectedIdx - 1, -1);
+      updateSelection(items);
+    } else if (e.key === 'Enter' && selectedIdx >= 0) {
+      e.preventDefault();
+      selectPackage(allPackages.find(function(p) {
+        return items[selectedIdx].textContent.trim().startsWith(p.name);
+      }));
+    } else if (e.key === 'Escape') {
+      pkgDropdown.style.display = 'none';
+      selectedIdx = -1;
+    }
+  });
+
+  function updateSelection(items) {
+    items.forEach(function(el, i) { el.classList.toggle('selected', i === selectedIdx); });
+    if (selectedIdx >= 0) items[selectedIdx].scrollIntoView({ block: 'nearest' });
+  }
+
+  function selectPackage(pkg) {
+    pkgInput.value = pkg.name;
+    if (pkg.latest_version) versionInput.value = pkg.latest_version;
+    pkgDropdown.style.display = 'none';
+    selectedIdx = -1;
+    loadPackageTasks(pkg.name);
+  }
+
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.form-group')) pkgDropdown.style.display = 'none';
+  });
+
+  var params = new URLSearchParams(window.location.search);
+  var pn = params.get('package_name');
+  var pv = params.get('package_version');
+  if (pn) {
+    pkgInput.value = pn;
+    if (pv) versionInput.value = pv;
+    setTimeout(function() { loadPackageTasks(pn); }, 300);
+  }
+})();
+
+function toggleSection(id) {
+  var el = document.getElementById(id);
+  var isOpen = el.classList.toggle('open');
+  var toggle = el.previousElementSibling;
+  if (toggle && toggle.classList.contains('section-toggle')) {
+    toggle.querySelector('.section-toggle-icon').textContent = isOpen ? '-' : '+';
+  }
+}
+
+function submitTask() {
+  var form = document.getElementById('taskForm');
+  var data = {};
+  var f = new FormData(form);
+
+  function v(name) { var val = f.get(name); return val === '' ? null : val; }
+
+  data.name = v('name');
+  data.description = v('description') || '';
+  data.priority = v('priority');
+  data.package_name = v('package_name');
+  data.package_version = f.get('package_version') ? parseInt(f.get('package_version')) : null;
+  data.package_type = v('package_type');
+  data.entrypoint = v('entrypoint');
+
+  var rawArgs = f.get('args');
+  data.args = rawArgs ? JSON.parse(rawArgs) : [];
+
+  data.target_ge = v('target_ge');
+  data.pool = v('pool');
+  data.os_tag = v('os_tag');
+  data.device_id = v('device_id');
+  data.timeout = parseInt(f.get('timeout') || 3600);
+  data.retry = parseInt(f.get('retry') || 0);
+  data.workdir = v('workdir');
+
+  var rawEnv = f.get('env');
+  data.env = rawEnv ? JSON.parse(rawEnv) : {};
+
+  data.user = v('user');
+
+  fetch('/tasks/new', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(data),
+  }).then(function(r) {
+    if (r.redirected) { window.location.href = r.url; }
+    else { r.json().then(function(d) { showToast('Error: ' + (d.detail || JSON.stringify(d)), 'error'); }); }
+  }).catch(function(e) { showToast('Request failed: ' + e, 'error'); });
+
+  return false;
+}
+</script>
+{% endblock %}

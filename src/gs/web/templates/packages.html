@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+{% block title %}Packages{% endblock %}
+{% block content %}
+<h1>Packages</h1>
+
+{% if gp_error %}
+<div class="card" style="border-color:#5a1a1a;">
+  <p style="color:#ff7b7b;">GP service unavailable: {{ gp_error }}</p>
+</div>
+{% endif %}
+
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+    <div class="card-title" style="margin:0;">All Packages</div>
+    <button class="btn btn-primary btn-sm" onclick="toggleForm()">+ New Package</button>
+  </div>
+
+  <div id="newPackageForm" style="display:none;margin-bottom:16px;padding:16px;background:#0f1419;border:1px solid #2a3040;border-radius:8px;">
+    <form action="/packages/create" method="post" enctype="multipart/form-data" id="pkgForm">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Name *</label>
+          <input name="name" required placeholder="e.g. web_autotest">
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <input name="description" placeholder="Optional description">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Package File (tar) *</label>
+        <input type="file" name="file" accept=".tar,.tar.gz,.tgz" required>
+      </div>
+
+      <div style="margin:12px 0;">
+        <button type="button" class="btn btn-sm" style="background:#2a3040;color:#e1e8ed;" onclick="toggleTemplates()">+ Task Templates</button>
+      </div>
+      <div id="taskTemplatesSection" style="display:none;margin-bottom:12px;">
+        <div id="templateList"></div>
+        <button type="button" class="btn btn-sm" style="background:#252b3d;color:#1d9bf0;margin-top:8px;" onclick="addTemplateRow()">+ Add Template</button>
+      </div>
+
+      <div style="display:flex;gap:8px;">
+        <button type="submit" class="btn btn-primary btn-sm">Create</button>
+        <button type="button" class="btn btn-sm" style="background:#2a3040;color:#e1e8ed;" onclick="toggleForm()">Cancel</button>
+      </div>
+    </form>
+  </div>
+
+  {% if packages %}
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Description</th>
+        <th>Latest Version</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for pkg in packages %}
+      <tr>
+        <td><strong>{{ pkg.name }}</strong></td>
+        <td>{{ pkg.description or '-' }}</td>
+        <td>{% if pkg.latest_version %}v{{ pkg.latest_version }}{% else %}-{% endif %}</td>
+        <td style="display:flex;gap:6px;">
+          <a href="/tasks/new?package_name={{ pkg.name }}{% if pkg.latest_version %}&package_version={{ pkg.latest_version }}{% endif %}" class="btn btn-primary btn-sm">New Task</a>
+          <a href="#" class="btn btn-sm" style="background:#2a3040;color:#e1e8ed;" onclick="return showVersions('{{ pkg.name }}')">Versions</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty">No packages found. Create one to get started.</div>
+  {% endif %}
+</div>
+
+<div id="versionsModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:2000;align-items:center;justify-content:center;">
+  <div style="background:#1a1f2e;border:1px solid #2a3040;border-radius:8px;padding:24px;min-width:480px;max-width:560px;max-height:80vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h2 id="versionsTitle" style="font-size:16px;margin:0;"></h2>
+      <button onclick="closeVersions()" style="background:none;border:none;color:#8899a6;font-size:20px;cursor:pointer;">&times;</button>
+    </div>
+    <div id="versionsList"></div>
+
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid #2a3040;">
+      <button class="btn btn-sm" style="background:#2a3040;color:#e1e8ed;" onclick="toggleNewVersionForm()">+ Publish New Version</button>
+    </div>
+    <div id="newVersionForm" style="display:none;margin-top:12px;padding:12px;background:#0f1419;border:1px solid #2a3040;border-radius:8px;">
+      <form id="verForm" method="post" enctype="multipart/form-data">
+        <div class="form-group">
+          <label>Description</label>
+          <input name="description" placeholder="Version description">
+        </div>
+        <div class="form-group">
+          <label>Package File (tar) *</label>
+          <input type="file" name="file" accept=".tar,.tar.gz,.tgz" required>
+        </div>
+        <div style="margin:12px 0;">
+          <button type="button" class="btn btn-sm" style="background:#2a3040;color:#e1e8ed;" onclick="toggleVerTemplates()">+ Task Templates</button>
+        </div>
+        <div id="verTemplatesSection" style="display:none;margin-bottom:12px;">
+          <div id="verTemplateList"></div>
+          <button type="button" class="btn btn-sm" style="background:#252b3d;color:#1d9bf0;margin-top:8px;" onclick="addVerTemplateRow()">+ Add Template</button>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button type="submit" class="btn btn-primary btn-sm">Publish</button>
+          <button type="button" class="btn btn-sm" style="background:#2a3040;color:#e1e8ed;" onclick="toggleNewVersionForm()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleForm() {
+  var f = document.getElementById('newPackageForm');
+  f.style.display = f.style.display === 'none' ? 'block' : 'none';
+  if (f.style.display === 'none') { document.getElementById('taskTemplatesSection').style.display = 'none'; }
+}
+
+var pkgTemplateCount = 0;
+var verTemplateCount = 0;
+var currentVersionPkg = '';
+
+function toggleTemplates() {
+  var s = document.getElementById('taskTemplatesSection');
+  s.style.display = s.style.display === 'none' ? 'block' : 'none';
+}
+
+function addTemplateRow(name, desc, entrypoint, argsStr) {
+  var list = document.getElementById('templateList');
+  var idx = pkgTemplateCount++;
+  var div = document.createElement('div');
+  div.id = 'pkg_tpl_' + idx;
+  div.style.cssText = 'background:#1a1f2e;border:1px solid #2a3040;border-radius:6px;padding:12px;margin-bottom:8px;';
+  div.innerHTML =
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
+    '<span style="color:#8899a6;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;">Template #' + (idx + 1) + '</span>' +
+    '<button type="button" onclick="this.parentElement.parentElement.remove()" style="background:none;border:none;color:#ff7b7b;cursor:pointer;font-size:16px;">&times;</button></div>' +
+    '<div class="form-row">' +
+    '<div class="form-group"><label>Name *</label><input name="tpl_name_' + idx + '" value="' + (name || '') + '" required placeholder="e.g. Smoke Test"></div>' +
+    '<div class="form-group"><label>Entrypoint *</label><input name="tpl_entrypoint_' + idx + '" value="' + (entrypoint || '') + '" required placeholder="e.g. run.sh"></div>' +
+    '</div>' +
+    '<div class="form-group"><label>Description</label><input name="tpl_desc_' + idx + '" value="' + (desc || '') + '" placeholder="Optional description"></div>' +
+    '<div class="form-group"><label>Args (comma-separated)</label><input name="tpl_args_' + idx + '" value="' + (argsStr || '') + '" placeholder="e.g. --suite=smoke,--verbose"></div>';
+  list.appendChild(div);
+}
+
+function buildTasksJson(prefix, count) {
+  var tasks = [];
+  for (var i = 0; i < count; i++) {
+    var tpl = document.getElementById(prefix + 'tpl_' + i);
+    if (!tpl) continue;
+    var name = tpl.querySelector('[name="tpl_name_' + i + '"]').value.trim();
+    var entrypoint = tpl.querySelector('[name="tpl_entrypoint_' + i + '"]').value.trim();
+    if (!name || !entrypoint) continue;
+    var desc = tpl.querySelector('[name="tpl_desc_' + i + '"]').value.trim();
+    var argsRaw = tpl.querySelector('[name="tpl_args_' + i + '"]').value.trim();
+    var args = argsRaw ? argsRaw.split(',').map(function(a) { return a.trim(); }).filter(Boolean) : [];
+    tasks.push({name: name, entrypoint: entrypoint, description: desc, args: args});
+  }
+  return tasks;
+}
+
+document.getElementById('pkgForm').addEventListener('submit', function(e) {
+  var tasks = buildTasksJson('pkg_', pkgTemplateCount);
+  if (tasks.length > 0) {
+    var input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'tasks';
+    input.value = JSON.stringify(tasks);
+    this.appendChild(input);
+  }
+});
+
+document.getElementById('verForm').addEventListener('submit', function(e) {
+  var tasks = buildTasksJson('ver_', verTemplateCount);
+  if (tasks.length > 0) {
+    var input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'tasks';
+    input.value = JSON.stringify(tasks);
+    this.appendChild(input);
+  }
+});
+
+function toggleNewVersionForm() {
+  var f = document.getElementById('newVersionForm');
+  f.style.display = f.style.display === 'none' ? 'block' : 'none';
+  if (f.style.display === 'none') {
+    document.getElementById('verTemplatesSection').style.display = 'none';
+  } else {
+    document.getElementById('verForm').action = '/packages/' + encodeURIComponent(currentVersionPkg) + '/versions/new';
+  }
+}
+
+function toggleVerTemplates() {
+  var s = document.getElementById('verTemplatesSection');
+  s.style.display = s.style.display === 'none' ? 'block' : 'none';
+}
+
+function addVerTemplateRow(name, desc, entrypoint, argsStr) {
+  var list = document.getElementById('verTemplateList');
+  var idx = verTemplateCount++;
+  var div = document.createElement('div');
+  div.id = 'ver_tpl_' + idx;
+  div.style.cssText = 'background:#1a1f2e;border:1px solid #2a3040;border-radius:6px;padding:12px;margin-bottom:8px;';
+  div.innerHTML =
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
+    '<span style="color:#8899a6;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;">Template #' + (idx + 1) + '</span>' +
+    '<button type="button" onclick="this.parentElement.parentElement.remove()" style="background:none;border:none;color:#ff7b7b;cursor:pointer;font-size:16px;">&times;</button></div>' +
+    '<div class="form-row">' +
+    '<div class="form-group"><label>Name *</label><input name="tpl_name_' + idx + '" value="' + (name || '') + '" required placeholder="e.g. Smoke Test"></div>' +
+    '<div class="form-group"><label>Entrypoint *</label><input name="tpl_entrypoint_' + idx + '" value="' + (entrypoint || '') + '" required placeholder="e.g. run.sh"></div>' +
+    '</div>' +
+    '<div class="form-group"><label>Description</label><input name="tpl_desc_' + idx + '" value="' + (desc || '') + '" placeholder="Optional description"></div>' +
+    '<div class="form-group"><label>Args (comma-separated)</label><input name="tpl_args_' + idx + '" value="' + (argsStr || '') + '" placeholder="e.g. --suite=smoke,--verbose"></div>';
+  list.appendChild(div);
+}
+
+function showVersions(name) {
+  currentVersionPkg = name;
+  var title = document.getElementById('versionsTitle');
+  var list = document.getElementById('versionsList');
+  title.textContent = name + ' - Versions';
+  list.innerHTML = '<div class="empty">Loading...</div>';
+  document.getElementById('versionsModal').style.display = 'flex';
+
+  fetch('/api/packages/' + encodeURIComponent(name) + '/versions')
+    .then(function(r) { return r.json(); })
+    .then(function(versions) {
+      if (versions.length === 0) {
+        list.innerHTML = '<div class="empty">No versions</div>';
+        return;
+      }
+      var html = '<table><thead><tr><th>Version</th><th>Description</th><th>Task Templates</th><th>Created</th></tr></thead><tbody>';
+      versions.forEach(function(v) {
+        var tasksHtml = '-';
+        if (v.tasks && v.tasks.length > 0) {
+          tasksHtml = v.tasks.map(function(t) { return t.name + (t.description ? ' (' + t.description + ')' : ''); }).join(', ');
+        }
+        html += '<tr><td><strong>v' + v.version + '</strong></td><td>' + (v.description || '-') + '</td><td>' + tasksHtml + '</td><td>' + (v.created_at || '-') + '</td></tr>';
+      });
+      html += '</tbody></table>';
+      list.innerHTML = html;
+    })
+    .catch(function() {
+      list.innerHTML = '<div class="empty">Failed to load versions</div>';
+    });
+
+  return false;
+}
+
+function closeVersions() {
+  document.getElementById('versionsModal').style.display = 'none';
+}
+
+document.getElementById('versionsModal').addEventListener('click', function(e) {
+  if (e.target === this) closeVersions();
+});
+</script>
+{% endblock %}

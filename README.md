@@ -1,2 +1,92 @@
-# taskgrid
-TaskGrid is a distributed task execution system. A task is a script (bash/python/powershell) that runs tests and completes work. Tasks are distributed by the Grid Scheduler (GS) to Grid Executors (GE). Each GE picks up a task, executes it, and reports results back to the GS. Grid Packages (GP) handle storage.
+# TaskGrid
+
+TaskGrid is a distributed task execution system with three components:
+
+- **GS** (Grid Scheduler) — Central scheduler, web UI, REST API
+- **GP** (Grid Package) — Package storage and version management
+- **GE** (Grid Executor) — Worker nodes that execute tasks
+
+## Quick Start
+
+### Prerequisites
+
+- Python 3.10+
+- Redis 6.x (required by GS)
+
+### Installation
+
+```bash
+pip install -e .
+```
+
+### Start Services
+
+Terminal 1 — GP (Package Server):
+
+```bash
+taskgrid-gp
+```
+
+Terminal 2 — GS (Scheduler + Web UI):
+
+```bash
+taskgrid-gs -c config.yaml.example
+```
+
+Open [http://localhost:8000](http://localhost:8000) to see the dashboard.
+
+### Load Demo Packages
+
+With GP and GS running, publish the three demo packages:
+
+```bash
+cd packages
+for f in *.tar.gz; do
+  name="${f%.tar.gz}"
+  tasks=$(cat "$name.tasks.json")
+  curl -s -X POST http://localhost:8000/api/packages \
+    -H "Authorization: Bearer" \
+    -F "name=$name" \
+    -F "description=Hello World demo - $name" \
+    -F "tasks=$tasks" \
+    -F "file=@$f"
+  echo ""
+done
+```
+
+### Create Your First Task
+
+1. Open [http://localhost:8000/tasks/new](http://localhost:8000/tasks/new)
+2. Type `hello_world_single` in the package field (autocomplete will match)
+3. Select the **Hello World** task template
+4. Set **Target GE** to `ge-node-01`
+5. Click **Create Task**
+6. Watch the task run and check the result
+
+### Demo Package Reference
+
+| Package | Template Mode | Tasks |
+|---|---|---|
+| `hello_world_single` | Single task | One task: prints "Hello, World!" |
+| `hello_world_multi` | Same entrypoint, different args | Two tasks: "Hello Alice!" / "Hello Bob!" (args differ) |
+| `hello_world_advanced` | Different entrypoints | Two tasks: hello.sh (prints "Hello!") / ping.sh (pings localhost) |
+
+## Project Structure
+
+```
+taskgrid/
+├── src/
+│   ├── ge/          # Grid Executor — runs on worker nodes
+│   ├── gp/          # Grid Package — package registry
+│   └── gs/          # Grid Scheduler — web UI + API + scheduler
+├── packages/        # Demo package tarballs
+├── docs/
+│   └── api.md       # REST API reference
+├── config.yaml.example
+├── pyproject.toml
+└── LICENSE
+```
+
+## License
+
+Apache 2.0

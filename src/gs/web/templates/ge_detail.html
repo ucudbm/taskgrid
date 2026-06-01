@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}GE {{ ge.ge_id }}{% endblock %}
+{% block content %}
+<h1>Executor: {{ ge.ge_id }}
+  <span class="badge badge-{{ ge.state if ge.state in ['online', 'running'] else 'offline' }}" style="margin-left:12px; font-size:14px;">{{ ge.state }}</span>
+</h1>
+
+<div class="detail-section">
+  <h3>Details</h3>
+  <div class="detail-grid">
+    <span class="label">GE ID</span><span class="value">{{ ge.ge_id }}</span>
+    <span class="label">State</span><span class="value"><span class="badge badge-{{ ge.state if ge.state in ['online', 'running'] else 'offline' }}">{{ ge.state }}</span></span>
+    <span class="label">Pool</span><span class="value">{{ ge.pool or '-' }}</span>
+    <span class="label">OS Tag</span><span class="value">{{ ge.os_tag or '-' }}</span>
+    <span class="label">Device ID</span><span class="value">{{ ge.device_id or '-' }}</span>
+    <span class="label">Total Slots</span><span class="value">{{ ge.total_slots }}</span>
+    <span class="label">Idle Slots</span><span class="value">{{ ge.idle_slots }}</span>
+    <span class="label">Current Task</span><span class="value">
+      {% if ge.current_task_id %}
+        <a href="/tasks/{{ ge.current_task_id }}">#{{ ge.current_task_id }}</a>
+      {% else %}-{% endif %}
+    </span>
+    <span class="label">Last Heartbeat</span><span class="value">{{ (ge.last_heartbeat or '-')[:19] }}</span>
+    <span class="label">Registered At</span><span class="value">{{ (ge.registered_at or '-')[:19] }}</span>
+  </div>
+</div>
+
+<h2>Tasks ({{ tasks|length }})</h2>
+<div class="card">
+{% if tasks %}
+<table>
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Name</th>
+      <th>Priority</th>
+      <th>Status</th>
+      <th>Created</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for t in tasks %}
+    <tr class="clickable" onclick="location.href='/tasks/{{ t.id }}'">
+      <td>{{ t.id }}</td>
+      <td>{{ t.name }}</td>
+      <td><span class="badge badge-{{ t.priority }}">{{ t.priority }}</span></td>
+      <td><span class="badge badge-{{ t.status }}">{{ t.status }}</span></td>
+      <td>{{ t.created_at[:19] }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty">No tasks assigned to this executor.</div>
+{% endif %}
+</div>
+{% endblock %}
