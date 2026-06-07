@@ -123,3 +123,18 @@ class TestPackageStore:
             assert store.next_version("pkg1") == 2
             store.publish_version("pkg1", 2, b"data")
             assert store.next_version("pkg1") == 3
+
+    def test_publish_with_tasks_round_trip(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = PackageStore(tmp)
+            store.create_package("pkg-task")
+            tasks = [{"name": "preprocess", "entrypoint": "pre.sh"},
+                     {"name": "train", "entrypoint": "train.py"}]
+            store.publish_version("pkg-task", 1, b"tarball", description="with tasks", tasks=tasks)
+            meta = store.get_version_meta("pkg-task", 1)
+            assert meta is not None
+            assert meta["tasks"] == tasks
+            assert meta["description"] == "with tasks"
+            versions = store.list_versions("pkg-task")
+            assert len(versions) == 1
+            assert versions[0]["tasks"] == tasks

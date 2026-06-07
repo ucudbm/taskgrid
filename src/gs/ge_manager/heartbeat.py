@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import json
+import logging
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -20,10 +21,14 @@ from ..redis_client.state_cache import StateCache
 
 
 class HeartbeatProcessor:
+    _LOG_INTERVAL = 30
+
     def __init__(self, repo: Repository, cache: StateCache, offline_timeout: int = 30):
         self._repo = repo
         self._cache = cache
         self._offline_timeout = offline_timeout
+        self._log = logging.getLogger("gs.heartbeat")
+        self._hb_count: dict[str, int] = {}
 
     def process(self, ge_id: str, state: str, task_id: Optional[int] = None,
                 progress: Optional[str] = None, slots: Optional[dict] = None,
@@ -56,6 +61,12 @@ class HeartbeatProcessor:
             "idle_slots": str(idle_slots),
             "last_heartbeat": now,
         }, ttl=self._offline_timeout + 30)
+
+        count = self._hb_count.get(ge_id, 0) + 1
+        self._hb_count[ge_id] = count
+        if count % self._LOG_INTERVAL == 1:
+            self._log.info("Heartbeat from %s: state=%s slots=%d/%d tasks=%s",
+                           ge_id, state, idle_slots, total_slots, task_ids or [])
 
         cancelled_ids = self._cache.get_cancelled_tasks_for_ge(ge_id, current_task_id=task_id)
         response = {"status": "ok"}

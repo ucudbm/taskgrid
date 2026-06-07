@@ -61,7 +61,8 @@ class HeartbeatReporter:
         with self._task_lock:
             task_ids = sorted(self._running_task_ids)
             is_running = bool(self._running_task_ids)
-            progress = self._get_progress(next(iter(self._running_task_ids), None))
+            tid = next(iter(self._running_task_ids), None)
+            progress = self._task_progress.get(tid) if tid else None
         payload = {
             "ge_id": self._cfg.id,
             "state": "running" if is_running else "idle",
