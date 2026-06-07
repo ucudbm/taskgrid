@@ -13,6 +13,7 @@
 # limitations under the License.
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Form, UploadFile, File
+from fastapi.responses import Response
 
 from .auth import verify_token
 
@@ -99,6 +100,26 @@ def create_package(
 @router.get("/{name}/versions")
 def list_versions(name: str, _=Depends(verify_token)):
     return _proxy("GET", f"/api/packages/{name}/versions")
+
+
+@router.get("/{name}/versions/{version}")
+def download_package_version(
+    name: str,
+    version: int,
+    _=Depends(verify_token),
+):
+    gp_url = _get_gp_url()
+    headers = _get_gp_headers()
+    try:
+        with httpx.Client(timeout=30) as client:
+            resp = client.get(
+                f"{gp_url}/api/packages/{name}/versions/{version}",
+                headers=headers,
+            )
+            resp.raise_for_status()
+            return Response(content=resp.content, media_type="application/octet-stream")
+    except httpx.RequestError as e:
+        raise HTTPException(502, f"GP unavailable: {e}")
 
 
 @router.post("/{name}/versions", status_code=201)

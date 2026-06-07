@@ -41,7 +41,7 @@
       <th>OS</th>
       <th>Device</th>
       <th>Slots</th>
-      <th>Current Task</th>
+      <th>Running Tasks</th>
       <th>Last Heartbeat</th>
       <th>Registered</th>
     </tr>
@@ -55,7 +55,7 @@
       <td>{{ g.os_tag or '-' }}</td>
       <td>{{ g.device_id or '-' }}</td>
       <td>{{ g.idle_slots }}/{{ g.total_slots }}</td>
-      <td>{{ g.current_task_id if g.current_task_id else '-' }}</td>
+      <td>{% if g.running_task_ids %}{{ g.running_task_ids | join(', ') }}{% elif g.current_task_id %}{{ g.current_task_id }}{% else %}-{% endif %}</td>
       <td>{{ (g.last_heartbeat or '')[:19] }}</td>
       <td>{{ (g.registered_at or '')[:19] }}</td>
     </tr>

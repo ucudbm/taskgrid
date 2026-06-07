@@ -16,8 +16,12 @@
     <span class="label">Device ID</span><span class="value">{{ ge.device_id or '-' }}</span>
     <span class="label">Total Slots</span><span class="value">{{ ge.total_slots }}</span>
     <span class="label">Idle Slots</span><span class="value">{{ ge.idle_slots }}</span>
-    <span class="label">Current Task</span><span class="value">
-      {% if ge.current_task_id %}
+    <span class="label">Running Tasks</span><span class="value">
+      {% if ge.running_task_ids %}
+        {% for tid in ge.running_task_ids %}
+          <a href="/tasks/{{ tid }}">#{{ tid }}</a>{% if not loop.last %}, {% endif %}
+        {% endfor %}
+      {% elif ge.current_task_id %}
         <a href="/tasks/{{ ge.current_task_id }}">#{{ ge.current_task_id }}</a>
       {% else %}-{% endif %}
     </span>

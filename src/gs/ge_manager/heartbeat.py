@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import json
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -26,7 +27,8 @@ class HeartbeatProcessor:
 
     def process(self, ge_id: str, state: str, task_id: Optional[int] = None,
                 progress: Optional[str] = None, slots: Optional[dict] = None,
-                version: Optional[str] = None) -> dict:
+                version: Optional[str] = None,
+                task_ids: Optional[list] = None) -> dict:
         now_dt = datetime.now(timezone.utc)
         now = now_dt.strftime("%Y-%m-%dT%H:%M:%S.") + f"{now_dt.microsecond // 1000:03d}Z"
 
@@ -45,6 +47,7 @@ class HeartbeatProcessor:
             idle_slots=idle_slots,
             current_task_id=task_id,
             current_version=version,
+            running_task_ids=json.dumps(task_ids) if task_ids else None,
         )
 
         self._cache.set_ge_online(ge_id, {

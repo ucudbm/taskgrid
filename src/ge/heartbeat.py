@@ -24,38 +24,50 @@ class HeartbeatReporter:
         self._cfg = cfg
         self._slots = slot_mgr
         self._client = client
-        self._running_task_id: int | None = None
+        self._running_task_ids: set[int] = set()
         self._task_progress: dict[int, str] = {}
-        self._progress_lock = threading.Lock()
+        self._task_lock = threading.Lock()
 
     @property
     def running_task_id(self) -> int | None:
-        return self._running_task_id
+        with self._task_lock:
+            for tid in self._running_task_ids:
+                return tid
+            return None
 
-    @running_task_id.setter
-    def running_task_id(self, value: int | None):
-        self._running_task_id = value
+    def add_task_id(self, task_id: int):
+        with self._task_lock:
+            self._running_task_ids.add(task_id)
+
+    def remove_task_id(self, task_id: int):
+        with self._task_lock:
+            self._running_task_ids.discard(task_id)
 
     def set_progress(self, task_id: int, phase: str):
-        with self._progress_lock:
+        with self._task_lock:
             self._task_progress[task_id] = phase
 
     def clear_progress(self, task_id: int):
-        with self._progress_lock:
+        with self._task_lock:
             self._task_progress.pop(task_id, None)
 
     def _get_progress(self, task_id: int | None) -> str | None:
         if task_id is None:
             return None
-        with self._progress_lock:
+        with self._task_lock:
             return self._task_progress.get(task_id)
 
     def send(self) -> dict | None:
+        with self._task_lock:
+            task_ids = sorted(self._running_task_ids)
+            is_running = bool(self._running_task_ids)
+            progress = self._get_progress(next(iter(self._running_task_ids), None))
         payload = {
             "ge_id": self._cfg.id,
-            "state": "running" if self._running_task_id else "idle",
-            "task_id": self._running_task_id,
-            "progress": self._get_progress(self._running_task_id),
+            "state": "running" if is_running else "idle",
+            "task_id": task_ids[0] if task_ids else None,
+            "task_ids": task_ids,
+            "progress": progress,
             "slots": {
                 "total": self._slots.total,
                 "idle": self._slots.idle,

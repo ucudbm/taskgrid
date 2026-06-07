@@ -81,6 +81,7 @@ class Repository:
                 update_url VARCHAR,
                 update_version VARCHAR,
                 current_version VARCHAR,
+                running_task_ids TEXT,
                 created_at DATETIME NOT NULL
             );
             CREATE TABLE IF NOT EXISTS task_results (
@@ -100,6 +101,10 @@ class Repository:
         """)
         try:
             conn.execute("ALTER TABLE ge_nodes ADD COLUMN current_version VARCHAR")
+        except Exception:
+            pass
+        try:
+            conn.execute("ALTER TABLE ge_nodes ADD COLUMN running_task_ids TEXT")
         except Exception:
             pass
         conn.commit()

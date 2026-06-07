@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import json
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -57,6 +58,7 @@ class GEStateManager:
                 "os_tag": r.get("os_tag"),
                 "device_id": r.get("device_id"),
                 "current_version": r.get("current_version"),
+                "running_task_ids": json.loads(r["running_task_ids"]) if r.get("running_task_ids") else None,
                 "update_url": r.get("update_url"),
                 "update_version": r.get("update_version"),
                 "registered_at": r.get("created_at"),
@@ -78,6 +80,7 @@ class GEStateManager:
             "os_tag": r.get("os_tag"),
             "device_id": r.get("device_id"),
             "current_version": r.get("current_version"),
+            "running_task_ids": json.loads(r["running_task_ids"]) if r.get("running_task_ids") else None,
             "update_url": r.get("update_url"),
             "update_version": r.get("update_version"),
             "registered_at": r.get("created_at"),

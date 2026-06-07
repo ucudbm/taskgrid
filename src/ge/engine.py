@@ -206,11 +206,11 @@ class Engine:
     def _dispatch(self, task: dict):
         task_id = task["task_id"]
         self._log.info("Dispatching task %s", task_id)
-        self._heartbeat.running_task_id = task_id
+        self._heartbeat.add_task_id(task_id)
 
         def _run():
             result = self._runner.execute(task)
-            self._heartbeat.running_task_id = None
+            self._heartbeat.remove_task_id(task_id)
             self._heartbeat.clear_progress(task_id)
             if result is not None:
                 self._submit_result(result)

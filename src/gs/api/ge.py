@@ -60,6 +60,7 @@ def heartbeat_ge(body: dict):
         progress=body.get("progress"),
         slots=body.get("slots"),
         version=body.get("version"),
+        task_ids=body.get("task_ids"),
     )
     return result
 
