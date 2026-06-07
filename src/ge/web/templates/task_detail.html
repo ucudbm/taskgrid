@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task {{ task_id }} - GE Local Web UI</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: #0f1419; color: #e1e8ed; font-size: 14px; line-height: 1.5;
+      padding: 24px 32px; max-width: 1200px; margin: 0 auto;
+    }
+    h1 { font-size: 24px; font-weight: 600; margin-bottom: 20px; color: #fff; }
+    a { color: #1d9bf0; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .card {
+      background: #1a1f2e; border: 1px solid #2a3040; border-radius: 8px;
+      padding: 16px; margin-bottom: 16px;
+    }
+    .detail-grid { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; }
+    .detail-grid .label { color: #8899a6; font-size: 13px; }
+    .detail-grid .value { color: #e1e8ed; font-size: 14px; }
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 4px;
+      font-size: 12px; font-weight: 600; text-transform: uppercase;
+    }
+    .badge-running { background: #1a5a8a; color: #7bc9ff; }
+    .badge-success { background: #1a5a3a; color: #7ae9a0; }
+    .badge-failed { background: #5a1a1a; color: #ff7b7b; }
+    .badge-cancelled { background: #3a2a1a; color: #ffb07b; }
+    .badge-timeout { background: #3a1a3a; color: #d07bff; }
+    .badge-unknown { background: #2a3040; color: #8899a6; }
+    pre {
+      background: #0f1419; border: 1px solid #2a3040; border-radius: 6px;
+      padding: 12px; overflow-x: auto; font-size: 13px; line-height: 1.4;
+      max-height: 600px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;
+    }
+    .btn {
+      display: inline-block; padding: 8px 16px; border-radius: 6px;
+      font-size: 14px; font-weight: 600; cursor: pointer; border: none;
+      transition: all 0.15s; text-decoration: none;
+    }
+    .btn-primary { background: #1d9bf0; color: #fff; }
+    .btn-primary:hover { background: #1a8cd8; text-decoration: none; }
+    .btn-danger { background: #b22222; color: #fff; }
+    .btn-danger:hover { background: #8b1a1a; text-decoration: none; }
+    .actions { display: flex; gap: 8px; margin-bottom: 16px; }
+    #logContent { font-family: monospace; }
+    .stream-indicator { color: #7bc9ff; font-size: 12px; margin-left: 12px; display: none; }
+  </style>
+</head>
+<body>
+  <a href="/">&larr; Back</a>
+  <h1>Task {{ task_id }}</h1>
+
+  <div class="actions">
+    {% if is_running %}
+    <button class="btn btn-danger" onclick="cancelTask()">Cancel</button>
+    <span class="stream-indicator" id="streamIndicator">&#9679; Live</span>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="detail-grid">
+      <span class="label">Task ID</span><span class="value">{{ task_id }}</span>
+      <span class="label">Status</span>
+      <span class="value">
+        {% if is_running %}
+          <span class="badge badge-running">running</span>
+        {% elif result %}
+          <span class="badge badge-{{ result.result_section.status }}">{{ result.result_section.status }}</span>
+        {% else %}
+          <span class="badge badge-unknown">unknown</span>
+        {% endif %}
+      </span>
+      {% if result and result.result_section %}
+      <span class="label">Exit Code</span><span class="value">{{ result.result_section.exit_code }}</span>
+      <span class="label">Duration</span><span class="value">{{ result.result_section.duration }}s</span>
+      <span class="label">Started</span><span class="value">{{ result.result_section.start_time[:19] }}</span>
+      <span class="label">Ended</span><span class="value">{{ result.result_section.end_time[:19] }}</span>
+        {% if result.result_section.error_msg %}
+        <span class="label">Error</span><span class="value" style="color:#ff7b7b;">{{ result.result_section.error_msg }}</span>
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
+
+  <h2>Output Log</h2>
+  <pre id="logContent">Loading...</pre>
+
+  <script>
+    function cancelTask() {
+      if (!confirm('Cancel task {{ task_id }}?')) return;
+      fetch('/api/tasks/{{ task_id }}/cancel', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          if (d.ok) { location.reload(); }
+          else { alert('Cancel failed'); }
+        })
+        .catch(function(e) { alert('Request failed: ' + e); });
+    }
+
+    function loadLog() {
+      fetch('/api/tasks/{{ task_id }}/log')
+        .then(function(r) { return r.text(); })
+        .then(function(text) {
+          document.getElementById('logContent').textContent = text || '(empty log)';
+        })
+        .catch(function() {
+          document.getElementById('logContent').textContent = '(failed to load log)';
+        });
+    }
+
+    {% if is_running %}
+    function streamLog() {
+      var es = new EventSource('/api/tasks/{{ task_id }}/log/stream');
+      var pre = document.getElementById('logContent');
+      var indicator = document.getElementById('streamIndicator');
+      indicator.style.display = 'inline';
+      es.onmessage = function(e) {
+        pre.textContent += JSON.parse(e.data);
+        pre.scrollTop = pre.scrollHeight;
+      };
+      es.onerror = function() {
+        es.close();
+        indicator.style.display = 'none';
+        loadLog();
+      };
+    }
+    streamLog();
+    {% else %}
+    loadLog();
+    {% endif %}
+  </script>
+</body>
+</html>

@@ -253,6 +253,14 @@ class TaskRunner:
                 },
             }
             task_log.info("Task %s finished: %s", task_id, status)
+            try:
+                result_dir = Path(self._cfg.log_dir) / "tasks" / str(task_id)
+                result_dir.mkdir(parents=True, exist_ok=True)
+                (result_dir / "result.json").write_text(
+                    json.dumps(result, indent=2, default=str)
+                )
+            except OSError:
+                get_sys_logger().warning("Failed to save result.json for task %s", task_id)
             return result
 
         except Exception as e:

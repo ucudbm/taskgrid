@@ -47,6 +47,9 @@ class GEConfig:
         self.device_id: Optional[str] = ge.get("device_id") or None
         self.total_slots: int = ge.get("total_slots", 3)
 
+        web = ge.get("web", {})
+        self.web_port: int = int(web.get("port", 0))
+
         ota = ge.get("ota", {})
         self.ota_enabled: bool = ota.get("enabled", False)
         self.ota_update_url: Optional[str] = ota.get("update_url")

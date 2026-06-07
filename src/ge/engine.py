@@ -27,6 +27,12 @@ from .ota.updater import OTAUpdater
 from ._utils import gzip_json
 from ._client import DNSResilientClient
 
+try:
+    import uvicorn
+    _HAS_UVICORN = True
+except ImportError:
+    _HAS_UVICORN = False
+
 
 class Engine:
     def __init__(self, cfg: GEConfig):
@@ -41,11 +47,13 @@ class Engine:
         self._poller = TaskPoller(cfg, client=self._client)
         self._runner = TaskRunner(cfg, self._slots, self._pkg_mgr, heartbeat=self._heartbeat)
         self._updater = OTAUpdater(cfg.ota_enabled, cfg.ota_update_url)
+        self._web_server = None
         self._running = False
 
     def start(self):
         self._running = True
         self._register()
+        self._start_web_ui()
         self._log.info("GE %s started (poll=%ss, heartbeat=%ss)",
                        self._cfg.id, self._cfg.polling_interval,
                        self._cfg.heartbeat_interval)
@@ -83,6 +91,8 @@ class Engine:
     def stop(self):
         self._log.info("GE %s shutting down", self._cfg.id)
         self._running = False
+        if self._web_server:
+            self._web_server.should_exit = True
         self._poller.close()
         self._pkg_mgr.close()
         self._client.close()
@@ -96,6 +106,25 @@ class Engine:
         t = threading.Thread(target=_cleanup_loop, daemon=True)
         t.start()
         self._log.info("Retention cleanup started (interval=24h)")
+
+    def _start_web_ui(self):
+        port = self._cfg.web_port
+        if not port:
+            return
+        if not _HAS_UVICORN:
+            self._log.warning("uvicorn not installed, cannot start web UI on port %s", port)
+            return
+        try:
+            from .web.app import app, set_engine_refs
+            set_engine_refs(self._cfg, self._slots, self._heartbeat, self._runner)
+
+            config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning")
+            self._web_server = uvicorn.Server(config)
+            t = threading.Thread(target=self._web_server.run, daemon=True)
+            t.start()
+            self._log.info("Web UI started on http://0.0.0.0:%s", port)
+        except Exception as e:
+            self._log.warning("Failed to start web UI: %s", e)
 
     def _cleanup_old_files(self):
         now = time.time()
