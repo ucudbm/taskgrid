@@ -33,11 +33,11 @@
       </div>
 
       <div style="margin:12px 0;">
-        <button type="button" class="btn btn-sm" style="background:#2a3040;color:#e1e8ed;" onclick="toggleTemplates()">+ Task Templates</button>
+        <button type="button" class="btn btn-sm" style="background:#2a3040;color:#e1e8ed;" onclick="toggleTemplates()">+ more options</button>
       </div>
       <div id="taskTemplatesSection" style="display:none;margin-bottom:12px;">
         <div id="templateList"></div>
-        <button type="button" class="btn btn-sm" style="background:#252b3d;color:#1d9bf0;margin-top:8px;" onclick="addTemplateRow()">+ Add Template</button>
+        <button type="button" class="btn btn-sm" style="background:#252b3d;color:#1d9bf0;margin-top:8px;" onclick="addTemplateRow()">+ Task Template</button>
       </div>
 
       <div style="display:flex;gap:8px;">
@@ -98,11 +98,11 @@
           <input type="file" name="file" accept=".tar,.tar.gz,.tgz" required>
         </div>
         <div style="margin:12px 0;">
-          <button type="button" class="btn btn-sm" style="background:#2a3040;color:#e1e8ed;" onclick="toggleVerTemplates()">+ Task Templates</button>
+          <button type="button" class="btn btn-sm" style="background:#2a3040;color:#e1e8ed;" onclick="toggleVerTemplates()">+ more options</button>
         </div>
         <div id="verTemplatesSection" style="display:none;margin-bottom:12px;">
           <div id="verTemplateList"></div>
-          <button type="button" class="btn btn-sm" style="background:#252b3d;color:#1d9bf0;margin-top:8px;" onclick="addVerTemplateRow()">+ Add Template</button>
+          <button type="button" class="btn btn-sm" style="background:#252b3d;color:#1d9bf0;margin-top:8px;" onclick="addVerTemplateRow()">+ Task Template</button>
         </div>
         <div style="display:flex;gap:8px;">
           <button type="submit" class="btn btn-primary btn-sm">Publish</button>
@@ -126,7 +126,11 @@ var currentVersionPkg = '';
 
 function toggleTemplates() {
   var s = document.getElementById('taskTemplatesSection');
-  s.style.display = s.style.display === 'none' ? 'block' : 'none';
+  var wasHidden = s.style.display === 'none';
+  s.style.display = wasHidden ? 'block' : 'none';
+  if (wasHidden && document.getElementById('templateList').children.length === 0) {
+    addTemplateRow();
+  }
 }
 
 function addTemplateRow(name, desc, entrypoint, argsStr) {
@@ -198,7 +202,11 @@ function toggleNewVersionForm() {
 
 function toggleVerTemplates() {
   var s = document.getElementById('verTemplatesSection');
-  s.style.display = s.style.display === 'none' ? 'block' : 'none';
+  var wasHidden = s.style.display === 'none';
+  s.style.display = wasHidden ? 'block' : 'none';
+  if (wasHidden && document.getElementById('verTemplateList').children.length === 0) {
+    addVerTemplateRow();
+  }
 }
 
 function addVerTemplateRow(name, desc, entrypoint, argsStr) {

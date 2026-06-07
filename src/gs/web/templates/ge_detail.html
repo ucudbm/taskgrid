@@ -3,6 +3,7 @@
 {% block content %}
 <h1>Executor: {{ ge.ge_id }}
   <span class="badge badge-{{ ge.state if ge.state in ['online', 'running'] else 'offline' }}" style="margin-left:12px; font-size:14px;">{{ ge.state }}</span>
+  <a href="/tasks/new?target_ge={{ ge.ge_id }}&amp;pool={{ ge.pool or '' }}&amp;os_tag={{ ge.os_tag or '' }}&amp;device_id={{ ge.device_id or '' }}" class="btn btn-primary btn-sm" style="margin-left:16px; vertical-align:middle;">+ New Task</a>
 </h1>
 
 <div class="detail-section">

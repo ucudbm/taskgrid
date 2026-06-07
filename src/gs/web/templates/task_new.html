@@ -65,20 +65,18 @@
     <div class="form-row">
       <div class="form-group">
         <label>Priority</label>
-        <select name="priority">
-          <option value="medium">Medium</option>
-          <option value="high">High</option>
-          <option value="low">Low</option>
-        </select>
+        <div class="btn-group" id="priorityGroup" data-name="priority">
+          <button type="button" class="btn btn-sm priority-btn selected" data-value="medium">Medium</button>
+          <button type="button" class="btn btn-sm priority-btn" data-value="high">High</button>
+          <button type="button" class="btn btn-sm priority-btn" data-value="low">Low</button>
+        </div>
+        <input type="hidden" name="priority" value="medium">
       </div>
-      <div class="form-group">
+      <div class="form-group" style="position:relative;">
         <label>Target GE</label>
-        <select name="target_ge">
-          <option value="">Any (auto-route)</option>
-          {% for g in ges %}
-          <option value="{{ g.ge_id }}">{{ g.ge_id }} ({{ g.state }}, {{ g.idle_slots }}/{{ g.total_slots }} slots)</option>
-          {% endfor %}
-        </select>
+        <input name="target_ge_text" id="geInput" placeholder="Any (auto-route)" autocomplete="off">
+        <input type="hidden" name="target_ge" id="targetGeHidden" value="">
+        <div id="geDropdown" class="autocomplete-dropdown"></div>
       </div>
     </div>
     <div class="form-row">
@@ -176,6 +174,10 @@
 .template-card .template-name { color:#fff; font-size:14px; font-weight:600; }
 .template-card .template-desc { color:#8899a6; font-size:12px; margin-top:2px; }
 .template-card .template-entry { color:#1d9bf0; font-size:11px; margin-top:2px; }
+.btn-group { display:flex; gap:6px; }
+.priority-btn { background:#0f1419; border:1px solid #2a3040; color:#8899a6; cursor:pointer; flex:1; text-align:center; }
+.priority-btn:hover { border-color:#1d9bf0; color:#e1e8ed; }
+.priority-btn.selected { background:#1d9bf0; border-color:#1d9bf0; color:#fff; }
 </style>
 
 <script>
@@ -219,6 +221,13 @@ PackageTrie.prototype.search = function(prefix) {
   var trie = new PackageTrie();
   var allPackages = [];
 
+  var gesData = [
+    {ge_id: '', label: 'Any (auto-route)'},
+    {% for g in ges %}
+    {ge_id: {{ g.ge_id|tojson }}, label: {{ (g.ge_id + ' (' + g.state + ', ' + g.idle_slots|string + '/' + g.total_slots|string + ' slots)')|tojson }}},
+    {% endfor %}
+  ];
+
   var pkgInput = document.getElementById('pkgNameInput');
   var pkgDropdown = document.getElementById('pkgDropdown');
   var taskNameInput = document.getElementById('taskNameInput');
@@ -231,6 +240,11 @@ PackageTrie.prototype.search = function(prefix) {
   var selectedIdx = -1;
   var currentTasks = null;
   var currentPkgName = '';
+
+  var geInput = document.getElementById('geInput');
+  var geDropdown = document.getElementById('geDropdown');
+  var geHidden = document.getElementById('targetGeHidden');
+  var geSelectedIdx = -1;
 
   function s4e(v) { return v.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
@@ -368,18 +382,124 @@ PackageTrie.prototype.search = function(prefix) {
     loadPackageTasks(pkg.name);
   }
 
+  document.getElementById('priorityGroup').addEventListener('click', function(e) {
+    var btn = e.target.closest('.priority-btn');
+    if (!btn) return;
+    this.querySelectorAll('.priority-btn').forEach(function(b) { b.classList.remove('selected'); });
+    btn.classList.add('selected');
+    this.nextElementSibling.value = btn.getAttribute('data-value');
+  });
+
+  function filterGes(val) {
+    if (!val) return gesData;
+    var lower = val.toLowerCase();
+    return gesData.filter(function(g) { return g.ge_id.toLowerCase().indexOf(lower) !== -1 || g.label.toLowerCase().indexOf(lower) !== -1; });
+  }
+
+  function selectGe(geId) {
+    var found = gesData.find(function(g) { return g.ge_id === geId; });
+    geInput.value = found ? found.label : '';
+    geHidden.value = geId || '';
+    geDropdown.style.display = 'none';
+    geSelectedIdx = -1;
+  }
+
+  geInput.addEventListener('focus', function() {
+    if (this.value && geHidden.value) return;
+    renderGeDropdown(filterGes(''));
+  });
+
+  geInput.addEventListener('input', function() {
+    var val = this.value.trim();
+    if (geHidden.value && val !== (gesData.find(function(g) { return g.ge_id === geHidden.value; }) || {}).label) {
+      geHidden.value = '';
+    }
+    geSelectedIdx = -1;
+    if (geDebounceTimer) clearTimeout(geDebounceTimer);
+    geDebounceTimer = setTimeout(function() { renderGeDropdown(filterGes(val)); }, 150);
+  });
+
+  var GE_MAX_SUGGESTIONS = 50;
+  var geDebounceTimer = null;
+
+  function renderGeDropdown(results) {
+    if (results.length === 0) { geDropdown.style.display = 'none'; return; }
+    var show = results.slice(0, GE_MAX_SUGGESTIONS);
+    geDropdown.innerHTML = '';
+    show.forEach(function(g, i) {
+      var item = document.createElement('div');
+      item.className = 'autocomplete-item';
+      var span = document.createElement('span');
+      span.textContent = g.label;
+      item.appendChild(span);
+      if (g.ge_id) {
+        var hint = document.createElement('span');
+        hint.className = 'hint';
+        hint.textContent = g.ge_id;
+        item.appendChild(hint);
+      }
+      item.addEventListener('mousedown', function(e) {
+        e.preventDefault();
+        selectGe(g.ge_id);
+      });
+      geDropdown.appendChild(item);
+    });
+    if (results.length > GE_MAX_SUGGESTIONS) {
+      var more = document.createElement('div');
+      more.style.cssText = 'padding:6px 12px;color:#8899a6;font-size:12px;text-align:center;';
+      more.textContent = '… and ' + (results.length - GE_MAX_SUGGESTIONS) + ' more';
+      geDropdown.appendChild(more);
+    }
+    geDropdown.style.display = 'block';
+  }
+
+  geInput.addEventListener('keydown', function(e) {
+    var items = geDropdown.querySelectorAll('.autocomplete-item');
+    if (items.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      geSelectedIdx = Math.min(geSelectedIdx + 1, items.length - 1);
+      items.forEach(function(el, i) { el.classList.toggle('selected', i === geSelectedIdx); });
+      if (geSelectedIdx >= 0) items[geSelectedIdx].scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      geSelectedIdx = Math.max(geSelectedIdx - 1, -1);
+      items.forEach(function(el, i) { el.classList.toggle('selected', i === geSelectedIdx); });
+    } else if (e.key === 'Enter' && geSelectedIdx >= 0) {
+      e.preventDefault();
+      var selectedLabel = items[geSelectedIdx].textContent.trim();
+      var g = gesData.find(function(g) { return g.label === selectedLabel; });
+      if (g) selectGe(g.ge_id);
+    } else if (e.key === 'Escape') {
+      geDropdown.style.display = 'none';
+      geSelectedIdx = -1;
+    }
+  });
+
   document.addEventListener('click', function(e) {
     if (!e.target.closest('.form-group')) pkgDropdown.style.display = 'none';
+    if (!e.target.closest('#geInput') && !e.target.closest('#geDropdown')) geDropdown.style.display = 'none';
   });
 
   var params = new URLSearchParams(window.location.search);
   var pn = params.get('package_name');
   var pv = params.get('package_version');
+  var tg = params.get('target_ge');
+  var pool = params.get('pool');
+  var osTag = params.get('os_tag');
+  var deviceId = params.get('device_id');
   if (pn) {
     pkgInput.value = pn;
     if (pv) versionInput.value = pv;
     setTimeout(function() { loadPackageTasks(pn); }, 300);
   }
+  if (tg) {
+    selectGe(tg);
+    openSection('schedExtra');
+  }
+  if (pool) document.querySelector('input[name="pool"]').value = pool;
+  if (osTag) document.querySelector('select[name="os_tag"]').value = osTag;
+  if (deviceId) document.querySelector('input[name="device_id"]').value = deviceId;
 })();
 
 function toggleSection(id) {
@@ -388,6 +508,17 @@ function toggleSection(id) {
   var toggle = el.previousElementSibling;
   if (toggle && toggle.classList.contains('section-toggle')) {
     toggle.querySelector('.section-toggle-icon').textContent = isOpen ? '-' : '+';
+  }
+}
+
+function openSection(id) {
+  var el = document.getElementById(id);
+  if (!el.classList.contains('open')) {
+    el.classList.add('open');
+    var toggle = el.previousElementSibling;
+    if (toggle && toggle.classList.contains('section-toggle')) {
+      toggle.querySelector('.section-toggle-icon').textContent = '-';
+    }
   }
 }
 
