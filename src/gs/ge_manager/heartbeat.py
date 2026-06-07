@@ -56,6 +56,10 @@ class HeartbeatProcessor:
         response = {"status": "ok"}
         if cancelled_ids:
             response["cancelled_task_ids"] = cancelled_ids
+        if ge_row.get("update_url"):
+            response["update_url"] = ge_row["update_url"]
+        if ge_row.get("update_version"):
+            response["update_version"] = ge_row["update_version"]
         return response
 
     def mark_offline(self, ge_id: str):

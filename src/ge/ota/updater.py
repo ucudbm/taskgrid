@@ -1,26 +1,17 @@
-# Copyright 2026 Shuo Huang
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-"""
-OTA Updater — Phase 2
+import hashlib
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tarfile
+import tempfile
+import time
+from pathlib import Path
 
-In Phase 2, GE will:
-1. Receive version update command from GS (via heartbeat response)
-2. Download new package from update_url
-3. Replace current executable
-4. Restart service
-"""
+import httpx
 
+from .. import _utils
 from ..log import get_sys_logger
 
 
@@ -28,8 +19,116 @@ class OTAUpdater:
     def __init__(self, enabled: bool, update_url: str | None = None):
         self._enabled = enabled
         self._update_url = update_url
+        self._checked_version: str | None = None
+        self._slot_mgr = None
 
-    def check_and_update(self):
+    def set_slot_manager(self, slot_mgr):
+        self._slot_mgr = slot_mgr
+
+    def check_and_update(self, heartbeat_response: dict | None = None):
         if not self._enabled:
             return
-        get_sys_logger().info("OTA update check skipped (Phase 2)")
+        log = get_sys_logger()
+
+        url = None
+        if heartbeat_response:
+            url = heartbeat_response.get("update_url")
+        if not url:
+            url = self._update_url
+        if not url:
+            return
+
+        version = self._resolve_version(url, heartbeat_response)
+        if version and version == self._checked_version:
+            return
+
+        if self._slot_mgr and self._slot_mgr.used > 0:
+            log.info("OTA update deferred: %s slot(s) in use", self._slot_mgr.used)
+            return
+
+        self._checked_version = version
+
+        log.info("OTA update available at %s", url)
+
+        try:
+            update_dir = Path(tempfile.mkdtemp(prefix="ge_ota_"))
+            archive_path = update_dir / "update.tar.gz"
+
+            log.info("Downloading update from %s", url)
+            resp = httpx.get(url, follow_redirects=True, timeout=120)
+            resp.raise_for_status()
+            archive_path.write_bytes(resp.content)
+            log.info("Downloaded %d bytes", len(resp.content))
+
+            sha256_url = url + ".sha256"
+            try:
+                sha_resp = httpx.get(sha256_url, timeout=30)
+                sha_resp.raise_for_status()
+                expected_hash = sha_resp.text.strip().split()[0].lower()
+                actual_hash = hashlib.sha256(resp.content).hexdigest().lower()
+                if actual_hash != expected_hash:
+                    log.error("SHA256 mismatch: expected %s, got %s", expected_hash, actual_hash)
+                    return
+                log.info("Checksum verified")
+            except (httpx.HTTPError, OSError):
+                log.warning("No SHA256 available at %s, skipping checksum", sha256_url)
+
+            extract_dir = update_dir / "extracted"
+            extract_dir.mkdir()
+            with tarfile.open(archive_path, "r:gz") as tf:
+                tf.extractall(extract_dir)
+            log.info("Extracted to %s", extract_dir)
+
+            ge_root = Path(_utils.__file__).parent
+            ge_root = ge_root.resolve()
+            log.info("GE install root: %s", ge_root)
+
+            candidate = extract_dir / "ge"
+            if not candidate.exists():
+                children = list(extract_dir.iterdir())
+                if children:
+                    candidate = children[0] / "ge"
+            if not candidate.exists() or not (candidate / "_utils.py").exists():
+                log.error("Update archive does not contain valid ge/ package")
+                log.info("Contents: %s", list(extract_dir.rglob("*")))
+                return
+
+            backup_dir = ge_root.parent / f"ge.bak.{int(time.time())}"
+            log.info("Backing up current GE to %s", backup_dir)
+            shutil.copytree(ge_root, backup_dir)
+
+            for item in ge_root.iterdir():
+                if item.is_dir():
+                    shutil.rmtree(item, ignore_errors=True)
+                else:
+                    item.unlink()
+            for item in candidate.iterdir():
+                dest = ge_root / item.name
+                if item.is_dir():
+                    shutil.copytree(item, dest)
+                else:
+                    shutil.copy2(item, dest)
+
+            log.info("Update applied, restarting...")
+
+            import ge.main
+            main_path = Path(ge.main.__file__).resolve()
+            python = sys.executable
+            args = [python, str(main_path)]
+            if "-c" in sys.argv:
+                idx = sys.argv.index("-c")
+                args.extend(sys.argv[idx:idx + 2])
+            log.info("Exec: %s", " ".join(args))
+            os.execv(python, args)
+
+        except Exception as e:
+            log.exception("OTA update failed: %s", e)
+
+    @staticmethod
+    def _resolve_version(url: str, heartbeat_response: dict | None = None) -> str | None:
+        if heartbeat_response and heartbeat_response.get("update_version"):
+            return str(heartbeat_response["update_version"])
+        try:
+            return url.rsplit("/", 1)[-1].replace(".tar.gz", "")
+        except Exception:
+            return None

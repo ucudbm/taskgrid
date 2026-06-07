@@ -86,7 +86,7 @@ def update_ge(ge_id: str, body: dict, _=Depends(verify_token)):
         raise HTTPException(404, f"GE '{ge_id}' not found")
 
     fields = {}
-    for key in ("device_id", "pool", "os_tag"):
+    for key in ("device_id", "pool", "os_tag", "update_url", "update_version"):
         if key in body:
             fields[key] = body[key] or None
 

@@ -47,6 +47,7 @@ class Engine:
         self._poller = TaskPoller(cfg, client=self._client)
         self._runner = TaskRunner(cfg, self._slots, self._pkg_mgr, heartbeat=self._heartbeat)
         self._updater = OTAUpdater(cfg.ota_enabled, cfg.ota_update_url)
+        self._updater.set_slot_manager(self._slots)
         self._web_server = None
         self._running = False
 
@@ -66,11 +67,11 @@ class Engine:
             try:
                 now = time.time()
                 if now - last_hb >= self._cfg.heartbeat_interval:
-                    cancelled = self._heartbeat.send()
+                    hb_resp = self._heartbeat.send()
                     last_hb = now
-                    self._updater.check_and_update()
+                    self._updater.check_and_update(heartbeat_response=hb_resp)
 
-                    cancelled_tasks = (cancelled or {}).get("cancelled_task_ids", [])
+                    cancelled_tasks = (hb_resp or {}).get("cancelled_task_ids", [])
                     for ctid in cancelled_tasks:
                         self._log.info("Cancelling task %s per GS request", ctid)
                         self._runner.cancel(ctid)

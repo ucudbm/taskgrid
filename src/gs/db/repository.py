@@ -78,6 +78,8 @@ class Repository:
                 pool VARCHAR,
                 os_tag VARCHAR,
                 device_id VARCHAR,
+                update_url VARCHAR,
+                update_version VARCHAR,
                 created_at DATETIME NOT NULL
             );
             CREATE TABLE IF NOT EXISTS task_results (
