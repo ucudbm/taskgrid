@@ -39,6 +39,9 @@ class GERegistry:
                 total_slots=total_slots,
                 idle_slots=total_slots,
                 current_task_id=None,
+                pool=pool,
+                os_tag=os_tag,
+                device_id=device_id,
             )
             self._cache.set_ge_online(ge_id, {
                 "state": "idle",

@@ -39,7 +39,7 @@ class HeartbeatProcessor:
 
         self._repo.update_ge(
             ge_id,
-            state="online",
+            state=state or "online",
             last_heartbeat=now,
             total_slots=total_slots,
             idle_slots=idle_slots,
