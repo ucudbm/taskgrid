@@ -16,7 +16,7 @@ import httpx
 from .config import GEConfig
 from .log import get_heartbeat_logger
 from .executor.slot import SlotManager
-from ._utils import gzip_json, timestamp_now
+from ._utils import gzip_json, timestamp_now, get_version
 
 
 class HeartbeatReporter:
@@ -60,6 +60,7 @@ class HeartbeatReporter:
                 "total": self._slots.total,
                 "idle": self._slots.idle,
             },
+            "version": get_version(),
             "timestamp": timestamp_now(),
         }
 

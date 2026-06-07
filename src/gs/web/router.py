@@ -15,6 +15,8 @@ from pathlib import Path
 
 import httpx
 from fastapi import APIRouter, HTTPException, Query, Request, Form, UploadFile, File
+
+from ..api.tasks import _normalize_task_input
 from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 
@@ -236,29 +238,3 @@ def package_new_version(
         raise HTTPException(502, f"GP unavailable: {e}")
 
     return RedirectResponse(url="/packages", status_code=303)
-
-
-def _normalize_task_input(body: dict) -> dict:
-    pkg = body.get("package_section", {})
-    sched = body.get("scheduler_section", {})
-    exec_sec = body.get("executor_section", {})
-
-    return {
-        "name": body.get("name"),
-        "priority": body.get("priority", sched.get("priority", "medium")),
-        "description": body.get("description", ""),
-        "package_name": body.get("package_name") or pkg.get("package_name"),
-        "package_version": body.get("package_version") if body.get("package_version") is not None else pkg.get("package_version"),
-        "package_type": body.get("package_type") or pkg.get("package_type", "shell"),
-        "entrypoint": body.get("entrypoint") or pkg.get("entrypoint"),
-        "args": body.get("args") if body.get("args") is not None else pkg.get("args", []),
-        "target_ge": body.get("target_ge") or sched.get("target_ge"),
-        "pool": body.get("pool") or sched.get("pool") or None,
-        "os_tag": body.get("os_tag") or sched.get("os_tag") or None,
-        "device_id": body.get("device_id") or sched.get("device_id"),
-        "timeout": body.get("timeout") or sched.get("timeout", 3600),
-        "retry": body.get("retry") or sched.get("retry", 0),
-        "workdir": body.get("workdir") or exec_sec.get("workdir"),
-        "env": body.get("env") if body.get("env") is not None else exec_sec.get("env", {}),
-        "user": body.get("user") or exec_sec.get("user"),
-    }

@@ -10,9 +10,11 @@ import time
 from pathlib import Path
 
 import httpx
+from packaging.version import parse as parse_version
 
 from .. import _utils
 from ..log import get_sys_logger
+from .._utils import get_version as get_current_ge_version
 
 
 class OTAUpdater:
@@ -38,17 +40,30 @@ class OTAUpdater:
         if not url:
             return
 
-        version = self._resolve_version(url, heartbeat_response)
-        if version and version == self._checked_version:
+        target_version_str = self._resolve_version(url, heartbeat_response)
+        if not target_version_str:
             return
+        if target_version_str == self._checked_version:
+            return
+
+        current_version_str = get_current_ge_version()
+        try:
+            if parse_version(target_version_str) <= parse_version(current_version_str):
+                log.info("GE already at %s, target %s, skipping", current_version_str, target_version_str)
+                self._checked_version = target_version_str
+                return
+        except Exception:
+            log.warning("Cannot parse versions: current=%s target=%s, falling back to string compare", current_version_str, target_version_str)
+            if target_version_str == current_version_str:
+                return
 
         if self._slot_mgr and self._slot_mgr.used > 0:
             log.info("OTA update deferred: %s slot(s) in use", self._slot_mgr.used)
             return
 
-        self._checked_version = version
+        self._checked_version = target_version_str
 
-        log.info("OTA update available at %s", url)
+        log.info("OTA update: %s -> %s at %s", current_version_str, target_version_str, url)
 
         try:
             update_dir = Path(tempfile.mkdtemp(prefix="ge_ota_"))

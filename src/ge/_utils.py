@@ -13,6 +13,7 @@
 # limitations under the License.
 import gzip
 import json
+from pathlib import Path
 from datetime import datetime, timezone
 
 
@@ -24,6 +25,13 @@ def timestamp_now() -> str:
 def timestamp_from_epoch(epoch: float) -> str:
     dt = datetime.fromtimestamp(epoch, tz=timezone.utc)
     return dt.strftime("%Y-%m-%dT%H:%M:%S.") + f"{dt.microsecond // 1000:03d}Z"
+
+
+def get_version() -> str:
+    version_file = Path(__file__).parent / "VERSION"
+    if version_file.exists():
+        return version_file.read_text().strip()
+    return "0.0.0"
 
 
 def gzip_json(payload: dict) -> tuple[bytes, dict]:

@@ -25,7 +25,8 @@ class HeartbeatProcessor:
         self._offline_timeout = offline_timeout
 
     def process(self, ge_id: str, state: str, task_id: Optional[int] = None,
-                progress: Optional[str] = None, slots: Optional[dict] = None) -> dict:
+                progress: Optional[str] = None, slots: Optional[dict] = None,
+                version: Optional[str] = None) -> dict:
         now_dt = datetime.now(timezone.utc)
         now = now_dt.strftime("%Y-%m-%dT%H:%M:%S.") + f"{now_dt.microsecond // 1000:03d}Z"
 
@@ -43,6 +44,7 @@ class HeartbeatProcessor:
             total_slots=total_slots,
             idle_slots=idle_slots,
             current_task_id=task_id,
+            current_version=version,
         )
 
         self._cache.set_ge_online(ge_id, {

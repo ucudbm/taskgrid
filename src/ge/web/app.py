@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, StreamingResponse, PlainTextResponse
+from fastapi.responses import HTMLResponse, StreamingResponse, PlainTextResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 
 from ..config import GEConfig
@@ -158,6 +158,18 @@ def api_task_log_stream(task_id: int):
                 break
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+@app.get("/api/tasks/{task_id}/artifacts")
+def api_task_artifacts(task_id: int):
+    artifact_path = Path(state.cfg.log_dir) / "tasks" / str(task_id) / "artifacts.zip"
+    if not artifact_path.exists():
+        raise HTTPException(404, "Artifacts not found")
+    return FileResponse(
+        path=str(artifact_path),
+        filename=f"artifacts_{task_id}.zip",
+        media_type="application/zip",
+    )
 
 
 @app.post("/api/tasks/{task_id}/cancel")

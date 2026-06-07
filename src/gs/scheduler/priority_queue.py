@@ -18,42 +18,40 @@ import redis
 
 
 class PriorityQueue:
+    _ROUTING_PREFIXES = {
+        "ge": "ge:{}",
+        "device": "device:{}",
+        "pool": "pool:{}",
+        "os_tag": "os:{}",
+    }
+
     def __init__(self, client: redis.Redis):
         self._client = client
         self._prefix = "taskgrid:queue:"
 
-    def _key(self, priority: str, ge_id: Optional[str] = None) -> str:
+    def _key(self, priority: str, ge_id: Optional[str] = None,
+             pool: Optional[str] = None, os_tag: Optional[str] = None,
+             device_id: Optional[str] = None) -> str:
         if ge_id:
             return f"{self._prefix}{priority}:ge:{ge_id}"
+        if device_id:
+            return f"{self._prefix}{priority}:device:{device_id}"
+        if pool:
+            return f"{self._prefix}{priority}:pool:{pool}"
+        if os_tag:
+            return f"{self._prefix}{priority}:os:{os_tag}"
         return f"{self._prefix}{priority}"
 
-    def _pool_key(self, priority: str, pool: str) -> str:
-        return f"{self._prefix}{priority}:pool:{pool}"
-
-    def _os_tag_key(self, priority: str, os_tag: str) -> str:
-        return f"{self._prefix}{priority}:os:{os_tag}"
-
-    def _device_key(self, priority: str, device_id: str) -> str:
-        return f"{self._prefix}{priority}:device:{device_id}"
-
-    def push(self, task_id: int, priority: str = "medium", ge_id: Optional[str] = None):
-        key = self._key(priority, ge_id)
+    def push(self, task_id: int, priority: str = "medium",
+             ge_id: Optional[str] = None, pool: Optional[str] = None,
+             os_tag: Optional[str] = None, device_id: Optional[str] = None):
+        key = self._key(priority, ge_id, pool, os_tag, device_id)
         self._client.zadd(key, {str(task_id): time.time()})
 
-    def push_with_pool(self, task_id: int, priority: str, pool: str):
-        key = self._pool_key(priority, pool)
-        self._client.zadd(key, {str(task_id): time.time()})
-
-    def push_with_os_tag(self, task_id: int, priority: str, os_tag: str):
-        key = self._os_tag_key(priority, os_tag)
-        self._client.zadd(key, {str(task_id): time.time()})
-
-    def push_with_device(self, task_id: int, priority: str, device_id: str):
-        key = self._device_key(priority, device_id)
-        self._client.zadd(key, {str(task_id): time.time()})
-
-    def pop(self, priority: str = "medium", ge_id: Optional[str] = None) -> Optional[int]:
-        key = self._key(priority, ge_id)
+    def pop(self, priority: str = "medium",
+            ge_id: Optional[str] = None, pool: Optional[str] = None,
+            os_tag: Optional[str] = None, device_id: Optional[str] = None) -> Optional[int]:
+        key = self._key(priority, ge_id, pool, os_tag, device_id)
         result = self._client.zpopmin(key, count=1)
         if result:
             task_id_str = result[0][0]
@@ -62,35 +60,11 @@ class PriorityQueue:
             return int(task_id_str)
         return None
 
-    def pop_from_pool(self, priority: str, pool: str) -> Optional[int]:
-        key = self._pool_key(priority, pool)
-        result = self._client.zpopmin(key, count=1)
-        if result:
-            task_id_str = result[0][0]
-            if isinstance(task_id_str, bytes):
-                task_id_str = task_id_str.decode()
-            return int(task_id_str)
-        return None
-
-    def pop_from_os_tag(self, priority: str, os_tag: str) -> Optional[int]:
-        key = self._os_tag_key(priority, os_tag)
-        result = self._client.zpopmin(key, count=1)
-        if result:
-            task_id_str = result[0][0]
-            if isinstance(task_id_str, bytes):
-                task_id_str = task_id_str.decode()
-            return int(task_id_str)
-        return None
-
-    def pop_from_device(self, priority: str, device_id: str) -> Optional[int]:
-        key = self._device_key(priority, device_id)
-        result = self._client.zpopmin(key, count=1)
-        if result:
-            task_id_str = result[0][0]
-            if isinstance(task_id_str, bytes):
-                task_id_str = task_id_str.decode()
-            return int(task_id_str)
-        return None
+    def remove(self, task_id: int, priority: str = "medium",
+               ge_id: Optional[str] = None, pool: Optional[str] = None,
+               os_tag: Optional[str] = None, device_id: Optional[str] = None) -> bool:
+        key = self._key(priority, ge_id, pool, os_tag, device_id)
+        return self._client.zrem(key, str(task_id)) > 0
 
     def peek(self, priority: str = "medium", ge_id: Optional[str] = None) -> Optional[int]:
         key = self._key(priority, ge_id)
@@ -102,59 +76,34 @@ class PriorityQueue:
             return int(task_id_str)
         return None
 
-    def remove(self, task_id: int, priority: str = "medium", ge_id: Optional[str] = None) -> bool:
-        key = self._key(priority, ge_id)
-        return self._client.zrem(key, str(task_id)) > 0
-
-    def remove_from_pool(self, task_id: int, priority: str, pool: str) -> bool:
-        key = self._pool_key(priority, pool)
-        return self._client.zrem(key, str(task_id)) > 0
-
-    def remove_from_os_tag(self, task_id: int, priority: str, os_tag: str) -> bool:
-        key = self._os_tag_key(priority, os_tag)
-        return self._client.zrem(key, str(task_id)) > 0
-
-    def remove_from_device(self, task_id: int, priority: str, device_id: str) -> bool:
-        key = self._device_key(priority, device_id)
-        return self._client.zrem(key, str(task_id)) > 0
-
     def size(self, priority: str = "medium", ge_id: Optional[str] = None) -> int:
         key = self._key(priority, ge_id)
         return self._client.zcard(key)
-
-    def _pop_any_from_key(self, key: str) -> Optional[int]:
-        result = self._client.zpopmin(key, count=1)
-        if result:
-            task_id_str = result[0][0]
-            if isinstance(task_id_str, bytes):
-                task_id_str = task_id_str.decode()
-            return int(task_id_str)
-        return None
 
     def pop_by_routing(self, ge_id: str, pool: Optional[str] = None,
                        os_tag: Optional[str] = None,
                        device_id: Optional[str] = None) -> Optional[int]:
         for priority in ("high", "medium", "low"):
-            task_id = self.pop(priority, ge_id)
+            task_id = self.pop(priority, ge_id=ge_id)
             if task_id is not None:
                 return task_id
         if device_id:
             for priority in ("high", "medium", "low"):
-                task_id = self.pop_from_device(priority, device_id)
+                task_id = self.pop(priority, device_id=device_id)
                 if task_id is not None:
                     return task_id
         if pool:
             for priority in ("high", "medium", "low"):
-                task_id = self.pop_from_pool(priority, pool)
+                task_id = self.pop(priority, pool=pool)
                 if task_id is not None:
                     return task_id
         if os_tag:
             for priority in ("high", "medium", "low"):
-                task_id = self.pop_from_os_tag(priority, os_tag)
+                task_id = self.pop(priority, os_tag=os_tag)
                 if task_id is not None:
                     return task_id
         for priority in ("high", "medium", "low"):
-            task_id = self._pop_any_from_key(self._key(priority))
+            task_id = self.pop(priority)
             if task_id is not None:
                 return task_id
         return None

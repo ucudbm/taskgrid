@@ -80,6 +80,7 @@ class Repository:
                 device_id VARCHAR,
                 update_url VARCHAR,
                 update_version VARCHAR,
+                current_version VARCHAR,
                 created_at DATETIME NOT NULL
             );
             CREATE TABLE IF NOT EXISTS task_results (
@@ -97,6 +98,10 @@ class Repository:
                 FOREIGN KEY (task_id) REFERENCES tasks(id)
             );
         """)
+        try:
+            conn.execute("ALTER TABLE ge_nodes ADD COLUMN current_version VARCHAR")
+        except Exception:
+            pass
         conn.commit()
         conn.close()
 

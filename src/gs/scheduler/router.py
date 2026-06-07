@@ -39,16 +39,9 @@ class TaskScheduler:
         pool = task_data.get("pool")
         os_tag = task_data.get("os_tag")
 
-        if target_ge:
-            self._queue.push(task_id, priority, ge_id=target_ge)
-        elif device_id:
-            self._queue.push_with_device(task_id, priority, device_id)
-        elif pool:
-            self._queue.push_with_pool(task_id, priority, pool)
-        elif os_tag:
-            self._queue.push_with_os_tag(task_id, priority, os_tag)
-        else:
-            self._queue.push(task_id, priority)
+        self._queue.push(task_id, priority,
+                         ge_id=target_ge, device_id=device_id,
+                         pool=pool, os_tag=os_tag)
 
         task_row = self._repo.get_task(task_id)
         return self._row_to_response(task_row)
@@ -142,16 +135,9 @@ class TaskScheduler:
             device_id = task.get("device_id")
             pool = task.get("pool")
             os_tag = task.get("os_tag")
-            if target_ge:
-                self._queue.remove(task_id, priority, ge_id=target_ge)
-            elif device_id:
-                self._queue.remove_from_device(task_id, priority, device_id)
-            elif pool:
-                self._queue.remove_from_pool(task_id, priority, pool)
-            elif os_tag:
-                self._queue.remove_from_os_tag(task_id, priority, os_tag)
-            else:
-                self._queue.remove(task_id, priority)
+            self._queue.remove(task_id, priority,
+                               ge_id=target_ge, device_id=device_id,
+                               pool=pool, os_tag=os_tag)
         else:
             self._cache.set_cancel_flag(task_id)
         self._repo.update_task_status(task_id, "cancelled")

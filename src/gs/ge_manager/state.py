@@ -56,6 +56,9 @@ class GEStateManager:
                 "pool": r.get("pool"),
                 "os_tag": r.get("os_tag"),
                 "device_id": r.get("device_id"),
+                "current_version": r.get("current_version"),
+                "update_url": r.get("update_url"),
+                "update_version": r.get("update_version"),
                 "registered_at": r.get("created_at"),
             })
         return result
@@ -74,5 +77,8 @@ class GEStateManager:
             "pool": r.get("pool"),
             "os_tag": r.get("os_tag"),
             "device_id": r.get("device_id"),
+            "current_version": r.get("current_version"),
+            "update_url": r.get("update_url"),
+            "update_version": r.get("update_version"),
             "registered_at": r.get("created_at"),
         }

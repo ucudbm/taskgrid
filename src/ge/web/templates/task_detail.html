@@ -82,6 +82,9 @@
         {% if result.result_section.error_msg %}
         <span class="label">Error</span><span class="value" style="color:#ff7b7b;">{{ result.result_section.error_msg }}</span>
         {% endif %}
+        {% if result.result_section.local_artifact_path %}
+        <span class="label">Artifacts</span><span class="value"><a href="/api/tasks/{{ task_id }}/artifacts">Download artifacts.zip</a></span>
+        {% endif %}
       {% endif %}
     </div>
   </div>

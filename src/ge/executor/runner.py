@@ -212,6 +212,7 @@ class TaskRunner:
                 self._cancelled.discard(task_id)
 
             artifacts = []
+            local_artifact_path = None
             output_dirs = [workdir / "output", workdir / "artifacts"]
             output_root = next((d for d in output_dirs if d.exists()), None)
             zip_path = workdir / f"output_{task_id}.zip"
@@ -228,6 +229,14 @@ class TaskRunner:
                 except Exception as e:
                     task_log.error("Failed to upload result file: %s", e)
                     artifacts = [str(zip_path)]
+                try:
+                    persist_dir = Path(self._cfg.log_dir) / "tasks" / str(task_id)
+                    persist_dir.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(zip_path, persist_dir / "artifacts.zip")
+                    local_artifact_path = str(persist_dir / "artifacts.zip")
+                    task_log.info("Artifacts persisted locally: %s", local_artifact_path)
+                except OSError as e:
+                    get_sys_logger().warning("Failed to persist artifacts locally: %s", e)
 
             if was_cancelled:
                 status = "cancelled"
@@ -249,6 +258,7 @@ class TaskRunner:
                     "duration": int(end - start),
                     "log_file": f"{self._cfg.log_dir}/tasks/{task_id}/output.log",
                     "output_files": artifacts,
+                    "local_artifact_path": local_artifact_path,
                     "error_msg": None if exit_code == 0 else f"exit code {exit_code}",
                 },
             }
