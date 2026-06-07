@@ -80,8 +80,8 @@ def _scan_tasks():
                 try:
                     with open(result_json) as f:
                         r = json.load(f)
-                    task_info["status"] = r.get("status", "unknown")
                     rs = r.get("result_section", {})
+                    task_info["status"] = rs.get("status", "unknown")
                     if rs:
                         task_info["exit_code"] = rs.get("exit_code")
                         task_info["duration"] = rs.get("duration")
